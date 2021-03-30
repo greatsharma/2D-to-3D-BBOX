@@ -125,29 +125,29 @@ class BaseTracker(object):
 
         if not lost:
             self.objects[obj_id].eos.semi_majoraxis = max(
-                int(2.25 * self.objects[obj_id].eos.last_d), 50
+                int(2.25 * self.objects[obj_id].eos.last_d), 30
             )
 
             if self.objects[obj_id].obj_class[0] in "2t,3t,4t,5t,6t,lgv,tractr,bus,mb":
                 self.objects[obj_id].eos.semi_minoraxis = max(
-                    int(self.objects[obj_id].eos.semi_majoraxis / 2.5), 30
+                    int(self.objects[obj_id].eos.semi_majoraxis / 2.5), 20
                 )
             else:
                 self.objects[obj_id].eos.semi_minoraxis = max(
-                    int(self.objects[obj_id].eos.semi_majoraxis / 4), 25
+                    int(self.objects[obj_id].eos.semi_majoraxis / 4), 15
                 )
         else:
             self.objects[obj_id].eos.semi_majoraxis = max(
-                int(2.2 * self.objects[obj_id].eos.last_d), 50
+                int(2.2 * self.objects[obj_id].eos.last_d), 30
             )
 
             if self.objects[obj_id].obj_class[0] in "2t,3t,4t,5t,6t,lgv,tractr,bus,mb":
                 self.objects[obj_id].eos.semi_minoraxis = max(
-                    int(self.objects[obj_id].eos.semi_majoraxis / 2), 40
+                    int(self.objects[obj_id].eos.semi_majoraxis / 2), 25
                 )
             else:
                 self.objects[obj_id].eos.semi_minoraxis = max(
-                    int(self.objects[obj_id].eos.semi_majoraxis / 3), 35
+                    int(self.objects[obj_id].eos.semi_majoraxis / 3), 22
                 )
 
         n = self.objects[obj_id].eos.last_d * 2

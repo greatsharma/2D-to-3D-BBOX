@@ -69,15 +69,6 @@ class KalmanTracker(BaseTracker):
                     + math.cos(angle) * (pt2[1] - pt1[1])
                 )
 
-                objcls = self.objects[obj_id].obj_class[0]
-                mx = self.velocity_regression[objlane][objcls][0][0]
-                my = self.velocity_regression[objlane][objcls][1][0]
-                cx = self.velocity_regression[objlane][objcls][0][1]
-                cy = self.velocity_regression[objlane][objcls][1][1]
-
-                x[1] = mx * x[0] + cx
-                x[3] = my * x[2] + cy
-
                 x = tuple(x)
 
             self.objects[obj_id].P = F * self.objects[obj_id].P * F.T + Q
@@ -167,11 +158,11 @@ class KalmanTracker(BaseTracker):
                         if self.objects[obj_id].obj_class[1] < detected_classes[col][1]:
                             self.objects[obj_id].obj_class = detected_classes[col]
 
-                    if len(self.objects[obj_id].path) > 4:
+                    if len(self.objects[obj_id].path) > 10:
                         self.objects[obj_id].direction = self.direction_detector(
                             self.objects[obj_id].lane,
                             self.objects[obj_id].path[-1],
-                            self.objects[obj_id].path[-4],
+                            self.objects[obj_id].path[-10],
                         )
 
                     self.objects[obj_id].path.append(
