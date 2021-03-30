@@ -1,0 +1,15 @@
+tw : 174
+car : 90
+lgv : 9
+2t : 12
+3t : 18
+4t : 8
+5t : 5
+6t : 0
+bus : 5
+ml : 12
+auto : 41
+mb : 0
+tractr : 2
+Total : 376
+Wrong direction : 0
