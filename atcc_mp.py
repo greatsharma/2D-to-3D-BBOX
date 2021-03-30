@@ -1042,7 +1042,7 @@ if __name__ == "__main__":
         "--input",
         type=str,
         required=False,
-        default="inputs/hyderabad_clip2.avi",
+        default="inputs/datl_clip1.mp4",
         help="path to input video",
     )
 
@@ -1051,7 +1051,7 @@ if __name__ == "__main__":
         "--inference",
         type=str,
         required=False,
-        default="vanilla",
+        default="trt",
         choices=["vanilla", "trt"],
         help="type pf inference",
     )
@@ -1111,7 +1111,7 @@ if __name__ == "__main__":
         "--max_track_points",
         type=int,
         required=False,
-        default=15,
+        default=35,
         help="maximum points to be tracked for a vehicle",
     )
 
