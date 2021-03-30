@@ -194,9 +194,9 @@ def draw_tracked_objects(self, frame, tracked_objs):
             angle,
         )
         if v > 1:
-            self.dev_cvutil_filewriter.write(f"objid: {obj.objid}, v: {v}, out\n\n")
+            print(f"objid: {obj.objid}, v: {v}, out\n\n")
         elif v == 1:
-            self.dev_cvutil_filewriter.write(f"objid: {obj.objid}, v: {v}, on\n\n")
+            print(f"objid: {obj.objid}, v: {v}, on\n\n")
 
     for obj_id, _, _ in to_deregister:
         self.tracker._deregister_object(obj_id)
