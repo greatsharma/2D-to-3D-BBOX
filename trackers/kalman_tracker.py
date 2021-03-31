@@ -51,23 +51,29 @@ class KalmanTracker(BaseTracker):
 
             if lost:
                 x = list(x)
-                pt1 = (self.objects[obj_id].state[0], self.objects[obj_id].state[2])
-                pt2 = (x[0], x[2])
-                angle = math.atan2(pt2[1] - pt1[1], pt2[0] - pt1[0])
 
                 objlane = self.objects[obj_id].lane
+                objcls = self.objects[obj_id].obj_class[0]
+                
+                mx = self.velocity_regression[objlane][objcls][0][0]
+                my = self.velocity_regression[objlane][objcls][1][0]
+                cx = self.velocity_regression[objlane][objcls][0][1]
+                cy = self.velocity_regression[objlane][objcls][1][1]
+                x[1] = mx * x[0] + cx
+                x[3] = my * x[2] + cy
+
+                pt1 = [self.objects[obj_id].state[0], -self.objects[obj_id].state[2]]
+                pt2 = [x[0], -x[2]]
+                angle = math.atan2(pt2[1] - pt1[1], pt2[0] - pt1[0])
                 angle = self.lane_angles[objlane] - angle
 
-                x[0] = int(
-                    pt1[0]
-                    + math.cos(angle) * (pt2[0] - pt1[0])
-                    - math.sin(angle) * (pt2[1] - pt1[1])
-                )
-                x[2] = int(
-                    pt1[1]
-                    + math.sin(angle) * (pt2[0] - pt1[0])
-                    + math.cos(angle) * (pt2[1] - pt1[1])
-                )
+                c = math.cos(angle)
+                s = math.sin(angle)
+                pt2[0] -= pt1[0]
+                pt2[1] -= pt1[1]
+
+                x[0] = int(pt1[0] + c * pt2[0] - s * pt2[1])
+                x[2] = -int(pt1[1] + s * pt2[0] + c * pt2[1])
 
                 x = tuple(x)
 
