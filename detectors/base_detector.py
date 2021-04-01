@@ -13,11 +13,13 @@ class BaseDetector(object):
         initial_frame,
         lane_detector: Callable,
         detection_thresh: float,
+        bottom_type="bottom-right"
     ) -> None:
 
         self.frame_h, self.frame_w = initial_frame.shape[:2]
         self.lane_detector = lane_detector
         self.detection_thresh = detection_thresh
+        self.bottom_type = bottom_type
 
         self.class_names = [
             "tw",
@@ -160,7 +162,10 @@ class BaseDetector(object):
                 axles.append(obj_rect)
                 continue
 
-            obj_bottom = (obj_rect[2], obj_rect[3])
+            if self.bottom_type == "bottom-left":
+                obj_bottom = (obj_rect[0], obj_rect[3])
+            else:
+                obj_bottom = (obj_rect[2], obj_rect[3])
             lane = self.lane_detector(obj_bottom)
 
             if lane is None:
