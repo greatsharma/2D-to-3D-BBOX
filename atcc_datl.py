@@ -9,11 +9,11 @@ from camera_metadata import CAMERA_METADATA
 from detectors.trt_detector import TrtYoloDetector
 
 
-vidcap1 = cv2.VideoCapture("inputs/datl_clip1.mp4")
+vidcap1 = cv2.VideoCapture("inputs/datlcam1_clip1.mp4")
 width1 = int(vidcap1.get(cv2.CAP_PROP_FRAME_WIDTH))
 height1 = int(vidcap1.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-vidcap2 = cv2.VideoCapture("inputs/datl_clip2.mp4")
+vidcap2 = cv2.VideoCapture("inputs/datlcam2_clip1.mp4")
 width2 = int(vidcap2.get(cv2.CAP_PROP_FRAME_WIDTH))
 height2 = int(vidcap2.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -24,7 +24,7 @@ _, initial_frame2 = vidcap2.read()
 
 initial_frame1 = cv2.resize(initial_frame1, dsize=(width1//2, height1//2))
 
-camera_meta = CAMERA_METADATA["datl"]
+camera_meta = CAMERA_METADATA["datlcam1"]
 
 detector = TrtYoloDetector(
     initial_frame1,
@@ -67,17 +67,16 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     frame1 = cv2.resize(frame1, dsize=(width1//2, height1//2))
     frame2 = cv2.resize(frame2, dsize=(width2//2, height2//2))
 
-    # for l in ["leftlane", "rightlane"]:
-    #     cv2.polylines(frame1, [camera_meta[f"{l}_coords"]], isClosed=True, color=(0, 0, 0), thickness=2)
-    #     cv2.circle(frame1, camera_meta[f"{l}_ref"], radius=4, color=(0, 0, 255), thickness=-1)
+    for l in ["leftlane", "rightlane"]:
+        cv2.polylines(frame1, [camera_meta[f"{l}_coords"]], isClosed=True, color=(0, 0, 0), thickness=2)
 
     detection_list, axles = detector.detect(frame1)
 
     for det in detection_list:
         rect = det["rect"]
         btm = det["obj_bottom"]
-        cv2.rectangle(frame1, rect[:2], rect[2:], (0,225,0), 2)
-        cv2.circle(frame1, btm, 3, (0,0,255), -1)
+        cv2.rectangle(frame1, rect[:2], rect[2:], (225,0,0), 2)
+        cv2.circle(frame1, btm, 4, (0,0,255), -1)
 
         btmx_tf = (0.44958882 * btm[0]) + (-3.23493889 * btm[1]) + 1299.903505513684
         btmy_tf = (0.41243032 * btm[0]) + (-0.07925315 * btm[1]) + 116.09248088227169
@@ -85,7 +84,7 @@ while vidcap1.isOpened() and vidcap2.isOpened():
         # btmx_tf = (0.39795221 * btm[0]) + (-3.06747396 * btm[1]) + 1269.8043491220583
         # btmy_tf = (0.38150148 * btm[0]) + (-0.01415993 * btm[1]) + 109.26557888289531
 
-        cv2.circle(frame2, (int(btmx_tf), int(btmy_tf)), 3, (0,0,255), -1)
+        cv2.circle(frame2, (int(btmx_tf), int(btmy_tf)), 4, (0,0,255), -1)
 
     final_frame = np.hstack((frame1, frame2))
     videowriter.write(final_frame)
