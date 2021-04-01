@@ -302,10 +302,10 @@ CAMERA_METADATA = {
     },
     "datl": {
         "leftlane_coords": np.array(
-            [(200, 480), (740, 487), (120,160), (15, 200)], dtype=np.int32
+            [(200, 520), (850, 520), (105, 180), (10, 228), (10, 330)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "rightlane_coords": np.array(
-            [(740, 487), (915, 384), (230, 122), (120, 160)], dtype=np.int32
+            [(850, 520), (950, 316), (223, 110), (105, 180)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "leftlane_ref": (470, 530),
         "rightlane_ref": (840, 480),
@@ -335,8 +335,8 @@ CAMERA_METADATA = {
             65,
         ],
         "lane_angles": {
-            "1": -2.711,
-            "2": -2.580,
+            "1": 2.772,
+            "2": 2.624,
         },
         "velocity_regression": {
             "1": {
