@@ -1,2 +1,0 @@
-Time : Total_Vehicles
-16 : 1044

@@ -1,4 +1,0 @@
-Time : Total_Vehicles
-15 : 82
-16 : 1218
-17 : 376
