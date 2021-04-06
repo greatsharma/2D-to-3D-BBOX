@@ -18,6 +18,9 @@ vidcap2 = cv2.VideoCapture("inputs/datlcam2_clip1.mp4")
 width2 = int(vidcap2.get(cv2.CAP_PROP_FRAME_WIDTH))
 height2 = int(vidcap2.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
+if int(vidcap1.get(cv2.CAP_PROP_FPS)) != int(vidcap2.get(cv2.CAP_PROP_FPS)):
+    raise ValueError("Both the videos has different fps")
+
 vidcap2.set(cv2.CAP_PROP_POS_FRAMES, 504)
 
 _, initial_frame1 = vidcap1.read()
@@ -43,7 +46,7 @@ outvideo_path = curr_folder + "/linear_mapping.avi"
 videowriter = cv2.VideoWriter(
     outvideo_path,
     cv2.VideoWriter_fourcc("M", "J", "P", "G"),
-    50.0,
+    int(vidcap1.get(cv2.CAP_PROP_FPS)),
     (1920, 540),
 )
 
@@ -267,7 +270,7 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     frame1 = cv2.resize(frame1, dsize=(width1//2, height1//2))
     frame2 = cv2.resize(frame2, dsize=(width2//2, height2//2))
 
-    key = cv2.waitKey(36)
+    key = cv2.waitKey(35)
 
     tok = time.time()
     avg_fps = round(frame_count1 / (tok - tik1), 2)
