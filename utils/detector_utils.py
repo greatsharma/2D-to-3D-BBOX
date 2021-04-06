@@ -5,12 +5,25 @@ from typing import Callable
 def init_lane_detector(camera_meta: dict) -> Callable:
     leftlane_coords = camera_meta["leftlane_coords"]
     rightlane_coords = camera_meta["rightlane_coords"]
+    threelane_road = False
+    try:
+        middlelane_coords = camera_meta["middlelane_coords"]
+        threelane_road = True
+    except KeyError:
+        pass
 
     def lane_detector(pt):
-        if cv2.pointPolygonTest(leftlane_coords, pt, False) == 1:
-            return "2"
-        elif cv2.pointPolygonTest(rightlane_coords, pt, False) == 1:
+        if cv2.pointPolygonTest(rightlane_coords, pt, False) == 1:
             return "1"
+        elif threelane_road:
+            if cv2.pointPolygonTest(middlelane_coords, pt, False) == 1:
+                return "2"
+            elif cv2.pointPolygonTest(leftlane_coords, pt, False) == 1:
+                return "3"
+            else:
+                return None
+        elif cv2.pointPolygonTest(leftlane_coords, pt, False) == 1:
+            return "2"
         else:
             return None
 
