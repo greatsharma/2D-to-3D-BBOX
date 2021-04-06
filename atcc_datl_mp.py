@@ -43,7 +43,7 @@ outvideo_path = curr_folder + "/linear_mapping.avi"
 videowriter = cv2.VideoWriter(
     outvideo_path,
     cv2.VideoWriter_fourcc("M", "J", "P", "G"),
-    30.0,
+    50.0,
     (1920, 540),
 )
 
