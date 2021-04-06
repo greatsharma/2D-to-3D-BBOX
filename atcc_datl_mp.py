@@ -6,8 +6,8 @@ import subprocess
 import numpy as np
 from multiprocessing import Process, Queue, Value
 
-from utils import init_lane_detector
 from camera_metadata import CAMERA_METADATA
+from utils import init_lane_detector, draw_text_with_backgroud
 
 
 vidcap1 = cv2.VideoCapture("inputs/datlcam1_clip1.mp4")
@@ -18,7 +18,7 @@ vidcap2 = cv2.VideoCapture("inputs/datlcam2_clip1.mp4")
 width2 = int(vidcap2.get(cv2.CAP_PROP_FRAME_WIDTH))
 height2 = int(vidcap2.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-vidcap2.set(cv2.CAP_PROP_POS_FRAMES, 505)
+vidcap2.set(cv2.CAP_PROP_POS_FRAMES, 504)
 
 _, initial_frame1 = vidcap1.read()
 _, initial_frame2 = vidcap2.read()
@@ -78,33 +78,50 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
             tik2 = time.time()
 
             detection_list1, axles1, frame1, frame_count1, fps_list1 = tilldetection1_queue.get()
-            detection_list2, axles2, frame2, frame_count2, fps_list2 = tilldetection2_queue.get()                
+            detection_list2, axles2, frame2, frame_count2, fps_list2 = tilldetection2_queue.get()     
 
-            for l in ["leftlane", "rightlane"]:
+            if frame_count1 != frame_count2:
+                print("frames out of sync !")
+                vidcap_status.value = 0
+
+            for l in ["leftlane", "middlelane", "rightlane"]:
                 cv2.polylines(frame1, [camera_meta1[f"{l}_coords"]], isClosed=True, color=(0, 0, 0), thickness=2)
 
-            for l in ["leftlane", "rightlane"]:
+            for l in ["leftlane", "middlelane", "rightlane"]:
                 cv2.polylines(frame2, [camera_meta2[f"{l}_coords"]], isClosed=True, color=(0, 0, 0), thickness=2)
 
             for det in detection_list1:
                 rect = det["rect"]
                 btm = det["obj_bottom"]
                 cv2.rectangle(frame1, rect[:2], rect[2:], (225,0,0), 2)
-                cv2.circle(frame1, btm, 4, (0,0,255), -1)
+                cv2.circle(frame1, btm, 3, (0,0,255), -1)
 
-                btmx_tf = (0.44958882 * btm[0]) + (-3.23493889 * btm[1]) + 1299.903505513684
-                btmy_tf = (0.41243032 * btm[0]) + (-0.07925315 * btm[1]) + 116.09248088227169
+                obj_centroid = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
+                x,y = obj_centroid[0] - 10, obj_centroid[1]
+                draw_text_with_backgroud(frame1,f"Lane {det['lane']}",x,y,font_scale=0.5,thickness=1,background=(0, 0, 0),
+                                        foreground=(255,255,255), box_coords_1=(-10, 10), box_coords_2=(8, -8),)
 
-                # btmx_tf = (0.39795221 * btm[0]) + (-3.06747396 * btm[1]) + 1269.8043491220583
-                # btmy_tf = (0.38150148 * btm[0]) + (-0.01415993 * btm[1]) + 109.26557888289531
+                if det['lane'] == "1":
+                    btmx_tf = int((0.64853632 * btm[0]) + (-3.65719188 * btm[1]) + 1348.0626331926992)
+                    btmy_tf = int((0.41959578 * btm[0]) + (-0.04602437 * btm[1]) + 99.9586045434763)
+                elif det['lane'] == "2":
+                    btmx_tf = int((0.55909006 * btm[0]) + (-3.36416888 * btm[1]) + 1303.0481440187946)
+                    btmy_tf = int((0.36751533 * btm[0]) + (-0.02325857 * btm[1]) + 112.93717716250062)
+                else:
+                    btmx_tf = int((0.39823 * btm[0]) + (-2.86037346 * btm[1]) + 1197.3612661461389)
+                    btmy_tf = int((0.30506286 * btm[0]) + (0.04646969 * btm[1]) + 108.23538508201506)
 
-                cv2.circle(frame2, (int(btmx_tf), int(btmy_tf)), 4, (0,0,255), -1)
+                cv2.circle(frame2, (int(btmx_tf), int(btmy_tf)), 3, (0,0,255), -1)
 
             for det in detection_list2:
                 rect = det["rect"]
                 btm = det["obj_bottom"]
                 cv2.rectangle(frame2, rect[:2], rect[2:], (225,0,0), 2)
-                # cv2.circle(frame2, btm, 3, (0,255,0), -1)
+
+                obj_centroid = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
+                x,y = obj_centroid[0] - 10, obj_centroid[1]
+                draw_text_with_backgroud(frame2,f"Lane {det['lane']}",x,y,font_scale=0.5,thickness=1,background=(0, 0, 0),
+                                        foreground=(255,255,255), box_coords_1=(-10, 10), box_coords_2=(8, -8),)
 
             final_frame = np.hstack((frame1, frame2))
             videowriter.write(final_frame)
@@ -250,7 +267,7 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     frame1 = cv2.resize(frame1, dsize=(width1//2, height1//2))
     frame2 = cv2.resize(frame2, dsize=(width2//2, height2//2))
 
-    key = cv2.waitKey(40)
+    key = cv2.waitKey(36)
 
     tok = time.time()
     avg_fps = round(frame_count1 / (tok - tik1), 2)
