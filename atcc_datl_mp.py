@@ -21,7 +21,7 @@ height2 = int(vidcap2.get(cv2.CAP_PROP_FRAME_HEIGHT))
 if int(vidcap1.get(cv2.CAP_PROP_FPS)) != int(vidcap2.get(cv2.CAP_PROP_FPS)):
     raise ValueError("Both the videos has different fps")
 
-vidcap2.set(cv2.CAP_PROP_POS_FRAMES, 504)
+vidcap2.set(cv2.CAP_PROP_POS_FRAMES, 506)
 
 _, initial_frame1 = vidcap1.read()
 _, initial_frame2 = vidcap2.read()

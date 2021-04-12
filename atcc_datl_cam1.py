@@ -10,6 +10,8 @@ from camera_metadata import CAMERA_METADATA
 from detectors.trt_detector import TrtYoloDetector
 
 
+WRITE_FRAME = False
+
 vidcap1 = cv2.VideoCapture("inputs/datlcam1_clip1.mp4")
 width1 = int(vidcap1.get(cv2.CAP_PROP_FRAME_WIDTH))
 height1 = int(vidcap1.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -18,7 +20,7 @@ vidcap2 = cv2.VideoCapture("inputs/datlcam2_clip1.mp4")
 width2 = int(vidcap2.get(cv2.CAP_PROP_FRAME_WIDTH))
 height2 = int(vidcap2.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-vidcap2.set(cv2.CAP_PROP_POS_FRAMES, 505)
+vidcap2.set(cv2.CAP_PROP_POS_FRAMES, 506)
 
 _, initial_frame1 = vidcap1.read()
 _, initial_frame2 = vidcap2.read()
@@ -44,12 +46,13 @@ if not os.path.exists(curr_folder):
 
 outvideo_path = curr_folder + "/linear_mapping.avi"
 
-videowriter = cv2.VideoWriter(
-    outvideo_path,
-    cv2.VideoWriter_fourcc("M", "J", "P", "G"),
-    50.0,
-    (960, 540),
-)
+if WRITE_FRAME:
+    videowriter = cv2.VideoWriter(
+        outvideo_path,
+        cv2.VideoWriter_fourcc("M", "J", "P", "G"),
+        50.0,
+        (1920, 540),
+    )
 
 
 def line_intersect(A1, A2, B1, B2):
@@ -181,9 +184,10 @@ while vidcap1.isOpened() and vidcap2.isOpened():
         cv2.circle(frame2, (int(btmx_tf), int(btmy_tf)), 3, (0,0,255), -1)
 
     final_frame = np.hstack((frame1, frame2))
-    videowriter.write(frame1)
+    if WRITE_FRAME:
+        videowriter.write(final_frame)
 
-    cv2.imshow("video", frame1)
+    cv2.imshow("video", final_frame)
 
     key = cv2.waitKey(1)
     if key == ord('q'):
@@ -197,20 +201,21 @@ vidcap1.release()
 vidcap2.release()
 cv2.destroyAllWindows()
 
-status = subprocess.call(
-    [
-        "ffmpeg",
-        "-i",
-        outvideo_path,
-        "-vcodec",
-        "libx264",
-        "-crf",
-        "28",
-        curr_folder + "/linear_mapping_comp.avi",
-    ]
-)
+if WRITE_FRAME:
+    status = subprocess.call(
+        [
+            "ffmpeg",
+            "-i",
+            outvideo_path,
+            "-vcodec",
+            "libx264",
+            "-crf",
+            "28",
+            curr_folder + "/linear_mapping_comp.avi",
+        ]
+    )
 
-if status:
-    print(f"\n unable to compress {outvideo_path} ! \n")
-else:
-    os.remove(outvideo_path)
+    if status:
+        print(f"\n unable to compress {outvideo_path} ! \n")
+    else:
+        os.remove(outvideo_path)
