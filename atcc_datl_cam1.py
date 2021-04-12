@@ -88,14 +88,11 @@ def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
     width = (rect[2] - rect[0])
     pt2 = int(rect[0] + width * width_ratio), rect[1]
 
-    cv2.line(frame1, pt1, pt2, boxcolor, 2)
-
     c1, c2 = pt2, (-411, -54)
     cx = int(c2[0] + (c1[0]-c2[0]) * 2.8)
     cy = int(c2[1] + (c1[1]-c2[1]) * 2.8)
 
     pt3 = line_intersect(pt2, (cx,cy), (rect[2], rect[1]), (rect[2], rect[3]))
-    cv2.line(frame1, pt2, pt3, boxcolor, 2)
 
     c1, c2 = pt1, (-411, -54)
     cx = int(c2[0] + (c1[0]-c2[0]) * 2.8)
@@ -112,33 +109,28 @@ def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
 
     pt_temp = pt4[0], pt4[1] + height
     pt5 = line_intersect(pt4, pt_temp, (rect[0], rect[3]), (rect[2], rect[3]))
-    cv2.line(frame1, pt4, pt5, boxcolor, 2)
-
-    cv2.line(frame1, pt1, pt4, boxcolor, 2)
-    cv2.line(frame1, pt3, pt4, boxcolor, 2)
 
     m = -(pt3[1] - pt4[1]) / (pt3[0] - pt4[0])
     c = -pt5[1] - m * pt5[0]
     pt_temp = int((0-c)/m), 0
     pt6 = line_intersect(pt5, pt_temp, (rect[2], rect[1]), (rect[2], rect[3]))
-    cv2.line(frame1, pt5, pt6, boxcolor, 2)
-    cv2.line(frame1, pt3, pt6, boxcolor, 2)
 
     pt7 = line_intersect(pt5, (-411, -54), (rect[0], rect[1]), (rect[0], rect[3]))
+
+    cv2.line(frame1, pt1, pt2, boxcolor, 2)
+    cv2.line(frame1, pt2, pt3, boxcolor, 2)
+    cv2.line(frame1, pt1, pt4, boxcolor, 2)
+    cv2.line(frame1, pt3, pt4, boxcolor, 2)
+    cv2.line(frame1, pt4, pt5, boxcolor, 2)
+    cv2.line(frame1, pt5, pt6, boxcolor, 2)
+    cv2.line(frame1, pt3, pt6, boxcolor, 2)
     cv2.line(frame1, pt5, pt7, boxcolor, 2)
     cv2.line(frame1, pt1, pt7, boxcolor, 2)
 
-    if det["obj_class"][0] not in ["tw", "auto", "car", "ml"]:
-        cv2.circle(frame1, pt1, 3, (0,0,0), -1)
-        cv2.circle(frame1, pt2, 3, (0,0,0), -1)
-        cv2.circle(frame1, pt3, 3, (0,0,0), -1)
-        cv2.circle(frame1, pt4, 3, (0,0,0), -1)
-        cv2.circle(frame1, pt5, 3, (0,0,0), -1)
-        cv2.circle(frame1, pt6, 3, (0,0,0), -1)
-        cv2.circle(frame1, pt7, 3, (0,0,0), -1)
-
     btm_pt = (pt5[0] + pt6[0]) // 2, (pt5[1] + pt6[1]) // 2
     cv2.circle(frame1, btm_pt, 3, (0,0,255), -1)
+
+    return btm_pt
 
 
 frame_count = 0
@@ -171,10 +163,10 @@ while vidcap1.isOpened() and vidcap2.isOpened():
         rect = det["rect"]
         btm = det["obj_bottom"]
 
-        # if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
-        cv2.rectangle(frame1, rect[:2], rect[2:], (255,0,0), 1)
+        if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
+            cv2.rectangle(frame1, rect[:2], rect[2:], (255,0,0), 1)
     
-        twod_2_threed(frame1, det)
+        btm = twod_2_threed(frame1, det)
 
         if det['lane'] == "1":
             btmx_tf = int((0.65523379 * btm[0]) + (-3.67679969 * btm[1]) + 1349.9740589597031)
