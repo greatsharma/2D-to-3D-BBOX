@@ -89,14 +89,14 @@ def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
     pt2 = int(rect[0] + width * width_ratio), rect[1]
 
     c1, c2 = pt2, (-411, -54)
-    cx = int(c2[0] + (c1[0]-c2[0]) * 2.8)
-    cy = int(c2[1] + (c1[1]-c2[1]) * 2.8)
+    cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+    cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
 
     pt3 = line_intersect(pt2, (cx,cy), (rect[2], rect[1]), (rect[2], rect[3]))
 
     c1, c2 = pt1, (-411, -54)
-    cx = int(c2[0] + (c1[0]-c2[0]) * 2.8)
-    cy = int(c2[1] + (c1[1]-c2[1]) * 2.8)
+    cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+    cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
 
     pt4_temp = line_intersect(pt1, (cx,cy), (rect[2], rect[1]), (rect[2], rect[3]))
     if pt4_temp is None:

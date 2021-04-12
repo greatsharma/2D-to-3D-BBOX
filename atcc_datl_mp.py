@@ -122,14 +122,14 @@ def twoD_2_threeD_primarycam(det):
     pt2 = int(rect[0] + width * width_ratio), rect[1]
 
     c1, c2 = pt2, (-411, -54)
-    cx = int(c2[0] + (c1[0]-c2[0]) * 2.8)
-    cy = int(c2[1] + (c1[1]-c2[1]) * 2.8)
+    cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+    cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
 
     pt3 = line_intersect(pt2, (cx,cy), (rect[2], rect[1]), (rect[2], rect[3]))
 
     c1, c2 = pt1, (-411, -54)
-    cx = int(c2[0] + (c1[0]-c2[0]) * 2.8)
-    cy = int(c2[1] + (c1[1]-c2[1]) * 2.8)
+    cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+    cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
 
     pt4_temp = line_intersect(pt1, (cx,cy), (rect[2], rect[1]), (rect[2], rect[3]))
     if pt4_temp is None:
@@ -175,14 +175,14 @@ def twoD_2_threeD_secondarycam(det):
     pt2 = int(rect[2] - width * width_ratio), rect[1]
 
     c1, c2 = pt2, (1227, -35)
-    cx = int(c2[0] + (c1[0]-c2[0]) * 2.8)
-    cy = int(c2[1] + (c1[1]-c2[1]) * 2.8)
+    cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+    cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
 
     pt3 = line_intersect(pt2, (cx,cy), (rect[0], rect[1]), (rect[0], rect[3]))
 
     c1, c2 = pt1, (1227, -35)
-    cx = int(c2[0] + (c1[0]-c2[0]) * 2.8)
-    cy = int(c2[1] + (c1[1]-c2[1]) * 2.8)
+    cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+    cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
 
     pt4_temp = line_intersect(pt1, (cx,cy), (rect[0], rect[1]), (rect[0], rect[3]))
     if pt4_temp is None:
@@ -199,8 +199,8 @@ def twoD_2_threeD_secondarycam(det):
 
     if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
         c1, c2 = pt2, (1227, -35)
-        cx = int(c2[0] + (c1[0]-c2[0]) * -2.8)
-        cy = int(c2[1] + (c1[1]-c2[1]) * -2.8)
+        cx = int(c2[0] + (c1[0]-c2[0]) * -3.8)
+        cy = int(c2[1] + (c1[1]-c2[1]) * -3.8)
         
         c = -pt1[1] - m * pt1[0]
         pt_temp = 0, int(-c)
@@ -250,10 +250,10 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
             for det in detection_list1:
                 rect = det["rect"]
 
-                obj_centroid = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
-                x,y = obj_centroid[0] - 10, obj_centroid[1]
-                draw_text_with_backgroud(frame1,det["obj_class"][0],x,y,font_scale=0.4,thickness=1,background=(0, 0, 0),
-                                        foreground=(255,255,255), box_coords_1=(-8, 8), box_coords_2=(6, -6),)
+                # obj_centroid = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
+                # x,y = obj_centroid[0] - 10, obj_centroid[1]
+                # draw_text_with_backgroud(frame1,det["obj_class"][0],x,y,font_scale=0.4,thickness=1,background=(0, 0, 0),
+                #                         foreground=(255,255,255), box_coords_1=(-8, 8), box_coords_2=(6, -6),)
 
                 # if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
                 #     cv2.rectangle(frame1, rect[:2], rect[2:], (255,0,0), 1)
@@ -277,10 +277,10 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
             for det in detection_list2:
                 rect = det["rect"]
 
-                obj_centroid = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
-                x,y = obj_centroid[0] - 10, obj_centroid[1]
-                draw_text_with_backgroud(frame2,det["obj_class"][0],x,y,font_scale=0.4,thickness=1,background=(0, 0, 0),
-                                        foreground=(255,255,255), box_coords_1=(-8, 8), box_coords_2=(6, -6),)
+                # obj_centroid = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
+                # x,y = obj_centroid[0] - 10, obj_centroid[1]
+                # draw_text_with_backgroud(frame2,det["obj_class"][0],x,y,font_scale=0.4,thickness=1,background=(0, 0, 0),
+                #                         foreground=(255,255,255), box_coords_1=(-8, 8), box_coords_2=(6, -6),)
 
                 # if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
                 #     cv2.rectangle(frame2, rect[:2], rect[2:], (255,0,0), 1)

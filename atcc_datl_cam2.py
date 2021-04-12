@@ -32,7 +32,7 @@ camera_meta = CAMERA_METADATA["datlcam2"]
 detector = TrtYoloDetector(
     initial_frame1,
     init_lane_detector(camera_meta),
-    detection_thresh=0.5,
+    detection_thresh=0.25,
     bottom_type="bottom-left"
 )
 
@@ -93,14 +93,14 @@ def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
     pt2 = int(rect[2] - width * width_ratio), rect[1]
 
     c1, c2 = pt2, (1227, -35)
-    cx = int(c2[0] + (c1[0]-c2[0]) * 2.8)
-    cy = int(c2[1] + (c1[1]-c2[1]) * 2.8)
+    cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+    cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
 
     pt3 = line_intersect(pt2, (cx,cy), (rect[0], rect[1]), (rect[0], rect[3]))
 
     c1, c2 = pt1, (1227, -35)
-    cx = int(c2[0] + (c1[0]-c2[0]) * 2.8)
-    cy = int(c2[1] + (c1[1]-c2[1]) * 2.8)
+    cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+    cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
 
     pt4_temp = line_intersect(pt1, (cx,cy), (rect[0], rect[1]), (rect[0], rect[3]))
     if pt4_temp is None:
@@ -117,8 +117,8 @@ def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
 
     if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
         c1, c2 = pt2, (1227, -35)
-        cx = int(c2[0] + (c1[0]-c2[0]) * -2.8)
-        cy = int(c2[1] + (c1[1]-c2[1]) * -2.8)
+        cx = int(c2[0] + (c1[0]-c2[0]) * -3.8)
+        cy = int(c2[1] + (c1[1]-c2[1]) * -3.8)
         
         c = -pt1[1] - m * pt1[0]
         pt_temp = 0, int(-c)
