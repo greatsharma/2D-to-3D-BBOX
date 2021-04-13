@@ -104,9 +104,10 @@ def draw_3dbox(frame, pts, boxcolor=(0,255,0)):
 
 def twoD_2_threeD_primarycam(det):
     rect = det["rect"]
+    rect = list(rect)
 
     if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
-        height_ratio = 0.15
+        height_ratio = 0.1
         width_ratio = -0.000353 * rect[2] + 0.595
     elif det["lane"] == "1":
         height_ratio = 0.06
@@ -116,6 +117,12 @@ def twoD_2_threeD_primarycam(det):
         width_ratio = -0.000244 * rect[2] + 0.4314
 
     height = (rect[3] - rect[1])
+
+    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+        rect[3] += int(height * 0.08)
+    else:
+        rect[3] += int(height * 0.1)
+
     pt1 = rect[0], int(rect[1] + height * height_ratio)
 
     width = (rect[2] - rect[0])
@@ -136,6 +143,8 @@ def twoD_2_threeD_primarycam(det):
         pt4_temp = line_intersect(pt1, (cx,cy), (rect[0], rect[3]), (rect[2], rect[3]))
 
     m = -(pt1[1] - pt2[1]) / (pt1[0] - pt2[0])
+    if det["obj_class"][0] == "tw":
+        m = 0.75 * m
     c = -pt3[1] - m * pt3[0]
     pt_temp = int((-540-c)/m), 540
     pt4 = line_intersect(pt1, pt4_temp, pt3, pt_temp)
@@ -152,11 +161,17 @@ def twoD_2_threeD_primarycam(det):
 
     btm_pt = (pt5[0] + pt6[0]) // 2, (pt5[1] + pt6[1]) // 2
 
+    if det["lane"] == "3":
+        btm_pt = int(0.5*pt5[0] + 0.5*pt6[0]), int(0.5*pt5[1] + 0.5*pt6[1])
+    else:
+        btm_pt = int(0.4*pt5[0] + 0.6*pt6[0]), int(0.4*pt5[1] + 0.6*pt6[1])
+    
     return btm_pt, [pt1, pt2, pt3, pt4, pt5, pt6, pt7]
 
 
 def twoD_2_threeD_secondarycam(det):
     rect = det["rect"]
+    rect = list(rect)
 
     if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
         height_ratio = 0.05
@@ -169,6 +184,14 @@ def twoD_2_threeD_secondarycam(det):
         width_ratio = 0.000582 * rect[0] + 0.0442
 
     height = (rect[3] - rect[1])
+
+    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+        rect[3] += int(height * 0.08)
+    elif det["lane"] == "1":
+        rect[3] += int(height * 0.12)
+    else:
+        rect[3] += int(height * 0.1)
+
     pt1 = rect[2], int(rect[1] + height * height_ratio)
 
     width = (rect[2] - rect[0])
@@ -221,7 +244,10 @@ def twoD_2_threeD_secondarycam(det):
 
     pt7 = line_intersect(pt5, (1227, -35), (rect[2], rect[1]), (rect[2], rect[3]))
 
-    btm_pt = (pt5[0] + pt6[0]) // 2, (pt5[1] + pt6[1]) // 2
+    if det["lane"] == "1" and det["obj_class"][0] not in ["tw", "auto", "car", "ml"]:
+        btm_pt = int(0.4*pt5[0] + 0.6*pt6[0]), int(0.4*pt5[1] + 0.6*pt6[1])
+    else:
+        btm_pt = int(0.5*pt5[0] + 0.5*pt6[0]), int(0.5*pt5[1] + 0.5*pt6[1])
 
     return btm_pt, [pt1, pt2, pt3, pt4, pt5, pt6, pt7]
 

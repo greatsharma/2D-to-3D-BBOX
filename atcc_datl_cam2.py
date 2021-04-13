@@ -75,6 +75,7 @@ def line_intersect(A1, A2, B1, B2):
 
 def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
     rect = det["rect"]
+    rect = list(rect)
 
     if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
         height_ratio = 0.05
@@ -87,6 +88,14 @@ def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
         width_ratio = 0.000582 * rect[0] + 0.0442
 
     height = (rect[3] - rect[1])
+
+    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+        rect[3] += int(height * 0.08)
+    elif det["lane"] == "1":
+        rect[3] += int(height * 0.12)
+    else:
+        rect[3] += int(height * 0.1)
+
     pt1 = rect[2], int(rect[1] + height * height_ratio)
 
     width = (rect[2] - rect[0])
@@ -149,8 +158,10 @@ def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
     cv2.line(frame1, pt5, pt7, boxcolor, 2)
     cv2.line(frame1, pt1, pt7, boxcolor, 2)
 
-    btm_pt = (pt5[0] + pt6[0]) // 2, (pt5[1] + pt6[1]) // 2
-    cv2.circle(frame1, btm_pt, 3, (0,0,255), -1)
+    if det["lane"] == "1" and det["obj_class"][0] not in ["tw", "auto", "car", "ml"]:
+        btm_pt = int(0.4*pt5[0] + 0.6*pt6[0]), int(0.4*pt5[1] + 0.6*pt6[1])
+    else:
+        btm_pt = int(0.5*pt5[0] + 0.5*pt6[0]), int(0.5*pt5[1] + 0.5*pt6[1])
 
     return btm_pt
 
@@ -178,10 +189,11 @@ while vidcap2.isOpened():
         rect = det["rect"]
         btm = det["obj_bottom"]
 
-        if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
-            cv2.rectangle(frame2, rect[:2], rect[2:], (255,0,0), 1)
+        # if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
+            # cv2.rectangle(frame2, rect[:2], rect[2:], (255,0,0), 1)
     
-        twod_2_threed(frame2, det)
+        btm = twod_2_threed(frame2, det)
+        cv2.circle(frame2, btm, 3, (0,0,255), -1)
 
     if WRITE_VIDEO:
         videowriter.write(frame2)
