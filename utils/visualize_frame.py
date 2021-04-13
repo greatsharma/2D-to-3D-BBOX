@@ -33,13 +33,13 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     frame2 = cv2.resize(frame2, dsize=(width2//2, height2//2))
 
     llcoords = np.array(
-                [(200, 520), (703, 521), (72, 197), (10, 228), (10, 330)], dtype=np.int32
+                [(200, 520), (652, 495), (72, 197), (10, 228), (10, 330)], dtype=np.int32
             ).reshape((-1, 1, 2))
     mlcoords = np.array(
-                [(703, 521), (872, 472), (129, 165), (72, 197)], dtype=np.int32
+                [(652, 495), (803, 444), (129, 165), (72, 197)], dtype=np.int32
             ).reshape((-1, 1, 2))
     rlcoords = np.array(
-                [(872, 472), (950, 316), (223, 110), (129, 165)], dtype=np.int32
+                [(803, 444), (916, 309), (223, 110), (129, 165)], dtype=np.int32
             ).reshape((-1, 1, 2))
 
     cv2.polylines(frame1, [llcoords], isClosed=True, color=(0, 0, 0), thickness=2)
@@ -47,20 +47,20 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     cv2.polylines(frame1, [rlcoords], isClosed=True, color=(0, 0, 0), thickness=2)
 
     llcoords = np.array(
-                [(20, 185), (20, 335), (690, 134), (505, 91)], dtype=np.int32
+                [(4, 188), (89, 313), (690, 134), (505, 91)], dtype=np.int32
             ).reshape((-1, 1, 2))
     mlcoords = np.array(
-                [(20, 335), (20, 509), (806, 158), (690, 134)], dtype=np.int32
+                [(89, 313), (282, 392), (806, 158), (690, 134)], dtype=np.int32
             ).reshape((-1, 1, 2))
     rlcoords = np.array(
-                [(20, 509), (20, 525), (462, 525), (934, 187), (806, 158)], dtype=np.int32
+                [(282, 392), (581, 444), (934, 187), (806, 158)], dtype=np.int32
             ).reshape((-1, 1, 2))
 
     cv2.polylines(frame2, [llcoords], isClosed=True, color=(0, 0, 0), thickness=2)
     cv2.polylines(frame2, [mlcoords], isClosed=True, color=(0, 0, 0), thickness=2)
     cv2.polylines(frame2, [rlcoords], isClosed=True, color=(0, 0, 0), thickness=2)
 
-    plt.imshow(cv2.cvtColor(frame1, code=cv2.COLOR_BGR2RGB))
+    plt.imshow(cv2.cvtColor(np.vstack((frame1, frame2)), code=cv2.COLOR_BGR2RGB))
     plt.show()
     break
 
