@@ -130,6 +130,8 @@ def twod_2_threed(frame, det, boxcolor=(0,255,0)):
         cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
         cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
         pt5 = line_intersect(pt4, pt_temp, lastaxle_btm_midpt, (cx,cy))
+        if pt5 is None:
+            raise UnboundLocalError
     except UnboundLocalError:
         pt5 = line_intersect(pt4, pt_temp, (rect[0], rect[3]), (rect[2], rect[3]))
 
