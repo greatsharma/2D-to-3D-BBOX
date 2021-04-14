@@ -4,13 +4,13 @@ import numpy as np
 CAMERA_METADATA = {
     "datlcam1": {
         "leftlane_coords": np.array(
-            [(200, 520), (652, 495), (72, 197), (10, 228), (10, 330)], dtype=np.int32
+            [(200, 520), (703, 521), (72, 197), (10, 228), (10, 330)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "middlelane_coords": np.array(
-            [(652, 495), (803, 444), (129, 165), (72, 197)], dtype=np.int32
+            [(703, 521), (872, 472), (129, 165), (72, 197)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "rightlane_coords": np.array(
-            [(803, 444), (916, 309), (223, 110), (129, 165)], dtype=np.int32
+            [(872, 472), (950, 316), (223, 110), (129, 165)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "leftlane_ref": (731, 535),
         "middlelane_ref": (878, 533),
@@ -47,13 +47,13 @@ CAMERA_METADATA = {
     },
     "datlcam2": {
         "leftlane_coords": np.array(
-            [(4, 188), (89, 313), (690, 134), (505, 91)], dtype=np.int32
+            [(20, 185), (20, 335), (690, 134), (505, 91)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "middlelane_coords": np.array(
-            [(89, 313), (282, 392), (806, 158), (690, 134)], dtype=np.int32
+            [(20, 335), (20, 509), (806, 158), (690, 134)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "rightlane_coords": np.array(
-            [(282, 392), (581, 444), (934, 187), (806, 158)], dtype=np.int32
+            [(20, 509), (20, 525), (462, 525), (934, 187), (806, 158)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "leftlane_ref": (5, 300),
         "middlelane_ref": (4, 417),

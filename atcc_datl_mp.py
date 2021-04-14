@@ -121,7 +121,11 @@ def twoD_2_threeD_primarycam(det):
     if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
         rect[3] += int(height * 0.08)
     else:
-        rect[3] += int(height * 0.1)
+        if len(det["axles"]) > 0:
+            last_axle = det["axles"][-1]
+            lastaxle_btm_midpt = int((last_axle[0] + last_axle[2])/2), last_axle[3]
+        else:
+            rect[3] += int(height * 0.1)
 
     pt1 = rect[0], int(rect[1] + height * height_ratio)
 
@@ -149,14 +153,21 @@ def twoD_2_threeD_primarycam(det):
     pt_temp = int((-540-c)/m), 540
     pt4 = line_intersect(pt1, pt4_temp, pt3, pt_temp)
 
-    pt_temp = pt4[0], pt4[1] + height
-    pt5 = line_intersect(pt4, pt_temp, (rect[0], rect[3]), (rect[2], rect[3]))
+    pt_temp = pt4[0], pt4[1] + 2*height
+
+    try:
+        c1, c2 = lastaxle_btm_midpt, (-411, -54)
+        cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+        cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
+        pt5 = line_intersect(pt4, pt_temp, lastaxle_btm_midpt, (cx,cy))
+    except UnboundLocalError:
+        pt5 = line_intersect(pt4, pt_temp, (rect[0], rect[3]), (rect[2], rect[3]))
 
     m = -(pt3[1] - pt4[1]) / (pt3[0] - pt4[0])
     c = -pt5[1] - m * pt5[0]
     pt_temp = int((0-c)/m), 0
-    pt6 = line_intersect(pt5, pt_temp, (rect[2], rect[1]), (rect[2], rect[3]))
-
+    
+    pt6 = line_intersect(pt5, pt_temp, (rect[2], rect[1]), (rect[2], rect[3]+height))
     pt7 = line_intersect(pt5, (-411, -54), (rect[0], rect[1]), (rect[0], rect[3]))
 
     btm_pt = (pt5[0] + pt6[0]) // 2, (pt5[1] + pt6[1]) // 2
@@ -187,10 +198,14 @@ def twoD_2_threeD_secondarycam(det):
 
     if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
         rect[3] += int(height * 0.08)
-    elif det["lane"] == "1":
-        rect[3] += int(height * 0.12)
     else:
-        rect[3] += int(height * 0.1)
+        if len(det["axles"]) > 0:
+            last_axle = det["axles"][-1]
+            lastaxle_btm_midpt = int((last_axle[0] + last_axle[2])/2), last_axle[3]
+        elif det["lane"] == "1":
+            rect[3] += int(height * 0.12)
+        else:
+            rect[3] += int(height * 0.1)
 
     pt1 = rect[2], int(rect[1] + height * height_ratio)
 
@@ -220,18 +235,25 @@ def twoD_2_threeD_secondarycam(det):
     pt_temp = int((-540-c)/m), 540
     pt4 = line_intersect(pt1, pt4_temp, pt3, pt_temp)
 
-    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
-        c1, c2 = pt2, (1227, -35)
-        cx = int(c2[0] + (c1[0]-c2[0]) * -3.8)
-        cy = int(c2[1] + (c1[1]-c2[1]) * -3.8)
+    pt_temp2 = pt4[0], pt4[1] + 2*height
+
+    try:
+        c1, c2 = lastaxle_btm_midpt, (1227, -35)
+        cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+        cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
+        pt5 = line_intersect(pt4, pt_temp2, lastaxle_btm_midpt, (cx,cy))
+    except UnboundLocalError:
+        if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+            c1, c2 = pt2, (1227, -35)
+            cx = int(c2[0] + (c1[0]-c2[0]) * -3.8)
+            cy = int(c2[1] + (c1[1]-c2[1]) * -3.8)
+
+            c = -pt1[1] - m * pt1[0]
+            pt_temp = 0, int(-c)
+            
+            pt2 = line_intersect(pt2, (cx,cy), pt1, pt_temp)
         
-        c = -pt1[1] - m * pt1[0]
-        pt_temp = 0, int(-c)
-
-        pt2 = line_intersect(pt2, (cx,cy), pt1, pt_temp)
-
-    pt_temp = pt4[0], pt4[1] + height
-    pt5 = line_intersect(pt4, pt_temp, (rect[0], rect[3]), (rect[2], rect[3]))
+        pt5 = line_intersect(pt4, pt_temp2, (rect[0], rect[3]), (rect[2], rect[3]))
 
     m = -(pt3[1] - pt4[1]) / (pt3[0] - pt4[0])
     if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
@@ -240,8 +262,8 @@ def twoD_2_threeD_secondarycam(det):
         m += 0.5 * m
     c = -pt5[1] - m * pt5[0]
     pt_temp = int((0-c)/m), 0
-    pt6 = line_intersect(pt5, pt_temp, (rect[0], rect[1]), (rect[0], rect[3]))
 
+    pt6 = line_intersect(pt5, pt_temp, (rect[0], rect[1]), (rect[0], rect[3]+height))
     pt7 = line_intersect(pt5, (1227, -35), (rect[2], rect[1]), (rect[2], rect[3]))
 
     if det["lane"] == "1" and det["obj_class"][0] not in ["tw", "auto", "car", "ml"]:
@@ -260,8 +282,8 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
         if tilldetection1_queue.qsize() > 0 and tilldetection2_queue.qsize() > 0:
             tik2 = time.time()
 
-            detection_list1, axles1, frame1, frame_count1, fps_list1 = tilldetection1_queue.get()
-            detection_list2, axles2, frame2, frame_count2, fps_list2 = tilldetection2_queue.get()     
+            detection_list1, frame1, frame_count1, fps_list1 = tilldetection1_queue.get()
+            detection_list2, frame2, frame_count2, fps_list2 = tilldetection2_queue.get()     
 
             if frame_count1 != frame_count2:
                 print("frames out of sync !")
@@ -300,6 +322,9 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
 
                 cv2.circle(frame2, (int(btmx_tf), int(btmy_tf)), 3, (0,0,255), -1)
 
+                for ax in det["axles"]:
+                    cv2.rectangle(frame1, ax[:2], ax[2:], (255,0,255), 3)
+
             for det in detection_list2:
                 rect = det["rect"]
 
@@ -314,6 +339,9 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
                 btm, pts  = twoD_2_threeD_secondarycam(det)
                 draw_3dbox(frame2, pts)
                 cv2.circle(frame2, btm, 3, (255,0,0), -1)
+
+                for ax in det["axles"]:
+                    cv2.rectangle(frame2, ax[:2], ax[2:], (255,0,255), 3)
 
             final_frame = np.hstack((frame1, frame2))
             videowriter.write(final_frame)
@@ -373,14 +401,14 @@ def detection_primarycam(preprocessedframes1_queue, tilldetection1_queue):
             tik2 = time.time()
 
             frame1, frame_count, fps_list = preprocessedframes1_queue.get()
-            detection_list, axles = detector.detect(frame1)
+            detection_list = detector.detect(frame1)
 
             tok = time.time()
             avg_fps = round(frame_count / (tok - tik1), 2)
             inst_fps = round(1.0 / (tok - tik2), 1)
             fps_list.append((inst_fps, avg_fps))
 
-            tilldetection1_queue.put((detection_list, axles, frame1, frame_count, fps_list))
+            tilldetection1_queue.put((detection_list, frame1, frame_count, fps_list))
 
 
 def detection_secondarycam(preprocessedframes2_queue, tilldetection2_queue):
@@ -391,7 +419,7 @@ def detection_secondarycam(preprocessedframes2_queue, tilldetection2_queue):
     detector = TrtYoloDetector(
         initial_frame2,
         init_lane_detector(camera_meta2),
-        detection_thresh=0.25,
+        detection_thresh=0.5,
         bottom_type="bottom-left"
     )
 
@@ -401,14 +429,14 @@ def detection_secondarycam(preprocessedframes2_queue, tilldetection2_queue):
             tik2 = time.time()
 
             frame2, frame_count, fps_list = preprocessedframes2_queue.get()
-            detection_list, axles = detector.detect(frame2)
+            detection_list = detector.detect(frame2)
 
             tok = time.time()
             avg_fps = round(frame_count / (tok - tik1), 2)
             inst_fps = round(1.0 / (tok - tik2), 1)
             fps_list.append((inst_fps, avg_fps))
 
-            tilldetection2_queue.put((detection_list, axles, frame2, frame_count, fps_list))
+            tilldetection2_queue.put((detection_list, frame2, frame_count, fps_list))
 
 
 preprocessedframe1_queue = Queue()

@@ -4,7 +4,7 @@ from typing import Callable
 
 import darknet
 import tensorrt as trt
-from utils import nonmax_suppression
+from utils import nonmax_suppression, intersection_over_rect
 
 
 class BaseDetector(object):
@@ -177,9 +177,33 @@ class BaseDetector(object):
                     "obj_bottom": obj_bottom,
                     "obj_class": [obj_class, round(obj_prob, 4)],
                     "lane": lane,
+                    "axles": [],
                 }
             )
 
         detection_list = nonmax_suppression(detection_list, 0.6)
 
-        return detection_list, axles
+        _axles = axles.copy()
+
+        for det in detection_list:
+            if det["obj_class"][0] == "tw":
+                continue
+            
+            rect1 = det["rect"]
+            obj_ax = []
+            temp = []
+
+            for ax in _axles:
+                if intersection_over_rect(rect1, ax) > 0.9:
+                    obj_ax.append(ax)
+                else:
+                    temp.append(ax)
+
+            if len(obj_ax) > 0:
+                det["axles"] = sorted(obj_ax, key=lambda x: x[0])
+
+            _axles = temp
+            if len(_axles) == 0:
+                break
+
+        return detection_list

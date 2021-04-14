@@ -32,7 +32,7 @@ camera_meta = CAMERA_METADATA["datlcam2"]
 detector = TrtYoloDetector(
     initial_frame1,
     init_lane_detector(camera_meta),
-    detection_thresh=0.25,
+    detection_thresh=0.5,
     bottom_type="bottom-left"
 )
 
@@ -73,7 +73,7 @@ def line_intersect(A1, A2, B1, B2):
     return int(x), int(y)
 
 
-def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
+def twod_2_threed(frame, det, boxcolor=(0,255,0)):
     rect = det["rect"]
     rect = list(rect)
 
@@ -91,10 +91,14 @@ def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
 
     if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
         rect[3] += int(height * 0.08)
-    elif det["lane"] == "1":
-        rect[3] += int(height * 0.12)
     else:
-        rect[3] += int(height * 0.1)
+        if len(det["axles"]) > 0:
+            last_axle = det["axles"][-1]
+            lastaxle_btm_midpt = int((last_axle[0] + last_axle[2])/2), last_axle[3]
+        elif det["lane"] == "1":
+            rect[3] += int(height * 0.12)
+        else:
+            rect[3] += int(height * 0.1)
 
     pt1 = rect[2], int(rect[1] + height * height_ratio)
 
@@ -124,19 +128,26 @@ def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
     pt_temp = int((-540-c)/m), 540
     pt4 = line_intersect(pt1, pt4_temp, pt3, pt_temp)
 
-    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
-        c1, c2 = pt2, (1227, -35)
-        cx = int(c2[0] + (c1[0]-c2[0]) * -3.8)
-        cy = int(c2[1] + (c1[1]-c2[1]) * -3.8)
+    pt_temp2 = pt4[0], pt4[1] + 2*height
+
+    try:
+        c1, c2 = lastaxle_btm_midpt, (1227, -35)
+        cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
+        cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
+        pt5 = line_intersect(pt4, pt_temp2, lastaxle_btm_midpt, (cx,cy))
+    except UnboundLocalError:
+        if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+            c1, c2 = pt2, (1227, -35)
+            cx = int(c2[0] + (c1[0]-c2[0]) * -3.8)
+            cy = int(c2[1] + (c1[1]-c2[1]) * -3.8)
+
+            c = -pt1[1] - m * pt1[0]
+            pt_temp = 0, int(-c)
+            
+            pt2 = line_intersect(pt2, (cx,cy), pt1, pt_temp)
         
-        c = -pt1[1] - m * pt1[0]
-        pt_temp = 0, int(-c)
-
-        pt2 = line_intersect(pt2, (cx,cy), pt1, pt_temp)
-
-    pt_temp = pt4[0], pt4[1] + height
-    pt5 = line_intersect(pt4, pt_temp, (rect[0], rect[3]), (rect[2], rect[3]))
-
+        pt5 = line_intersect(pt4, pt_temp2, (rect[0], rect[3]), (rect[2], rect[3]))
+    
     m = -(pt3[1] - pt4[1]) / (pt3[0] - pt4[0])
     if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
         m += 0.2 * m
@@ -144,19 +155,19 @@ def twod_2_threed(frame1, det, boxcolor=(0,255,0)):
         m += 0.5 * m
     c = -pt5[1] - m * pt5[0]
     pt_temp = int((0-c)/m), 0
-    pt6 = line_intersect(pt5, pt_temp, (rect[0], rect[1]), (rect[0], rect[3]))
-
+    
+    pt6 = line_intersect(pt5, pt_temp, (rect[0], rect[1]), (rect[0], rect[3]+height))
     pt7 = line_intersect(pt5, (1227, -35), (rect[2], rect[1]), (rect[2], rect[3]))
 
-    cv2.line(frame1, pt1, pt2, boxcolor, 2)
-    cv2.line(frame1, pt2, pt3, boxcolor, 2)
-    cv2.line(frame1, pt1, pt4, boxcolor, 2)
-    cv2.line(frame1, pt3, pt4, boxcolor, 2)
-    cv2.line(frame1, pt4, pt5, boxcolor, 2)
-    cv2.line(frame1, pt5, pt6, boxcolor, 2)
-    cv2.line(frame1, pt3, pt6, boxcolor, 2)
-    cv2.line(frame1, pt5, pt7, boxcolor, 2)
-    cv2.line(frame1, pt1, pt7, boxcolor, 2)
+    cv2.line(frame, pt1, pt2, boxcolor, 2)
+    cv2.line(frame, pt2, pt3, boxcolor, 2)
+    cv2.line(frame, pt1, pt4, boxcolor, 2)
+    cv2.line(frame, pt3, pt4, boxcolor, 2)
+    cv2.line(frame, pt4, pt5, boxcolor, 2)
+    cv2.line(frame, pt5, pt6, boxcolor, 2)
+    cv2.line(frame, pt3, pt6, boxcolor, 2)
+    cv2.line(frame, pt5, pt7, boxcolor, 2)
+    cv2.line(frame, pt1, pt7, boxcolor, 2)
 
     if det["lane"] == "1" and det["obj_class"][0] not in ["tw", "auto", "car", "ml"]:
         btm_pt = int(0.4*pt5[0] + 0.6*pt6[0]), int(0.4*pt5[1] + 0.6*pt6[1])
@@ -181,7 +192,7 @@ while vidcap2.isOpened():
     # for l in ["leftlane", "middlelane", "rightlane"]:
     #     cv2.polylines(frame2, [camera_meta[f"{l}_coords"]], isClosed=True, color=(0, 0, 0), thickness=2)
 
-    detection_list, axles = detector.detect(frame2)
+    detection_list = detector.detect(frame2)
 
     frame_count += 1
 
@@ -190,10 +201,13 @@ while vidcap2.isOpened():
         btm = det["obj_bottom"]
 
         # if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
-            # cv2.rectangle(frame2, rect[:2], rect[2:], (255,0,0), 1)
+        #     cv2.rectangle(frame2, rect[:2], rect[2:], (255,0,0), 1)
     
         btm = twod_2_threed(frame2, det)
         cv2.circle(frame2, btm, 3, (0,0,255), -1)
+
+        for ax in det["axles"]:
+            cv2.rectangle(frame2, ax[:2], ax[2:], (255,0,255), 3)
 
     if WRITE_VIDEO:
         videowriter.write(frame2)
