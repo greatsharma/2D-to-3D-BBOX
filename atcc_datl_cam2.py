@@ -93,7 +93,7 @@ def twod_2_threed(frame, det, boxcolor=(0,255,0)):
         rect[3] += int(height * 0.08)
     else:
         if len(det["axles"]) > 0:
-            last_axle = det["axles"][-1]
+            last_axle = det["axles"][0]
             lastaxle_btm_midpt = int((last_axle[0] + last_axle[2])/2), last_axle[3]
         elif det["lane"] == "1":
             rect[3] += int(height * 0.12)
@@ -135,6 +135,8 @@ def twod_2_threed(frame, det, boxcolor=(0,255,0)):
         cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
         cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
         pt5 = line_intersect(pt4, pt_temp2, lastaxle_btm_midpt, (cx,cy))
+        if pt5 is None:
+            raise UnboundLocalError
     except UnboundLocalError:
         if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
             c1, c2 = pt2, (1227, -35)
