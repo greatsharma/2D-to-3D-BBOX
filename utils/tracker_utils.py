@@ -38,7 +38,7 @@ def init_direction_detector(camera_meta: dict) -> Callable:
     return direction_detector
 
 
-def get_axleconfig(axles):
+def _get_axleconfig(axles):
     axle_dists = []
 
     for i in range(len(axles) - 1):

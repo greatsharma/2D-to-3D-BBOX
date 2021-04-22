@@ -283,7 +283,7 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
             trackedobjs_list2, frame2, frame_count2, fps_list2 = tilldetection2_queue.get()     
 
             if frame_count1 != frame_count2:
-                print("frames out of sync !")
+                print("\nframes out of sync !\n")
                 vidcap_status.value = 0
 
             # for l in ["leftlane", "middlelane", "rightlane"]:
@@ -520,6 +520,7 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     vidcap_status.value, frame2 = vidcap2.read()
 
     if not vidcap_status.value:
+        print(f"vidcap_status false")
         if not process3.is_alive():
             process1.terminate()
             process2.terminate()
