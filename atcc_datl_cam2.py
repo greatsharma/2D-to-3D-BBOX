@@ -111,9 +111,8 @@ def twoD_2_threeD_secondarycam(obj):
     if objcls in ["tw", "auto", "car", "ml"]:
         rect[3] += int(height * 0.08)
     else:
-        if len(obj.axles) > 0:
-            last_axle = obj.axles[0]
-            lastaxle_btm_midpt = int((last_axle[0] + last_axle[2])/2), last_axle[3]
+        if obj.lastdetected_axle:
+            lastaxle_btm_midpt = int((obj.lastdetected_axle[0] + obj.lastdetected_axle[2])/2), obj.lastdetected_axle[3]
         elif obj.lane == "1":
             rect[3] += int(height * 0.12)
         else:
@@ -153,7 +152,7 @@ def twoD_2_threeD_secondarycam(obj):
         c1, c2 = lastaxle_btm_midpt, (1227, -35)
         cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
         cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
-        pt5 = line_intersect(pt4, pt_temp2, lastaxle_btm_midpt, (cx,cy))
+        pt5 = line_intersect(pt4, pt_temp2, (1227, -35), (cx,cy))
         if pt5 is None:
             raise UnboundLocalError
     except UnboundLocalError:
@@ -210,11 +209,13 @@ while vidcap2.isOpened():
 
     tracked_objects = tracker.update(detection_list)
 
-    axle_assignments(tracked_objects, axles, sort_order="asce")
+    axle_assignments(tracked_objects, axles, sort_order="desc")
 
     for obj in tracked_objects.values():
         obj.obj_bottom, obj.threed_box = twoD_2_threeD_secondarycam(obj)
         
+        rect = obj.rect
+        obj_centroid = (rect[0]+rect[2])//2, (rect[1]+rect[3])//2
         btm = obj.obj_bottom
         lane = obj.lane
 
@@ -222,14 +223,40 @@ while vidcap2.isOpened():
         #     rect = obj.rect
         #     cv2.rectangle(frame2, rect[:2], rect[2:], (255,0,0), 1)
 
-        draw_3dbox(frame2, obj.threed_box)
+        if obj.absent_count == 0:
+            x, y = obj_centroid[0] - 10, obj_centroid[1]
+            draw_3dbox(frame2, obj.threed_box, linewidth=2)
+        else:
+            x, y = btm[0] - 10, btm[1]
+
+        if obj.direction:
+            txt = str(obj.objid) + ": " + obj.obj_class[0]
+            draw_text_with_backgroud(frame2, txt, x, y, font_scale=0.6, thickness=2,
+                background=(243, 227, 218), foreground=(0, 0, 0), box_coords_1=(-7, 7), box_coords_2=(10, -10),
+            )
+
+        max_track_pts = 25
+
+        if len(obj.path) <= max_track_pts:
+            path = obj.path
+        else:
+            path = obj.path[len(obj.path) - max_track_pts :]
+
+        prev_point = None
+        for pt in path:
+            if not prev_point is None:
+                cv2.line(frame2, (prev_point[0], prev_point[1]), (pt[0], pt[1]),
+                    (0,255,0), thickness=2, lineType=8,
+                )
+            prev_point = pt
+
         cv2.circle(frame2, btm, 3, (0,0,255), -1)
 
-        try:
-            for ax in obj.axle_track[-1]:
-                cv2.rectangle(frame2, ax[:2], ax[2:], (255,0,255), 3)
-        except IndexError:
-            pass
+        # try:
+        #     for ax in obj.axle_track[-1]:
+        #         cv2.rectangle(frame2, ax[:2], ax[2:], (255,0,255), 3)
+        # except IndexError:
+        #     pass
 
     if WRITE_VIDEO:
         videowriter.write(frame2)

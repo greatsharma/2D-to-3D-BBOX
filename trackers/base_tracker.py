@@ -31,7 +31,8 @@ class VehicleObject(object):
         self.starttime = None
         self.endtime = None
 
-        self.axles = []  # only for trucks
+        self.max_axles_detected = []
+        self.lastdetected_axle = None # for 3d box
         self.axle_config = None
         self.axle_track = []
 

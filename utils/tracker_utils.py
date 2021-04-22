@@ -91,14 +91,17 @@ def axle_assignments(tracked_objs, axles, sort_order):
 
             obj.axle_track.append(obj_ax)
 
-            if len(obj_ax) > len(obj.axles):
-                obj.axles = obj_ax
+            if len(obj_ax) >= 1:
+                largest_axle = sorted(obj_ax, key=lambda x: x[3]-x[1])[0]
+                if not obj.lastdetected_axle or (largest_axle[3] - largest_axle[1]) >= (obj.lastdetected_axle[3] - obj.lastdetected_axle[1]):
+                    obj.lastdetected_axle = largest_axle
+    
+            if len(obj_ax) > len(obj.max_axles_detected):
+                obj.max_axles_detected = obj_ax
 
-            if (
-                obj.obj_class[0] in ["3t", "4t", "5t", "6t"]
-                and len(obj.axles) == int(obj.obj_class[0][0])
-            ):
-                obj.axle_config = _get_axleconfig(obj.axles)
+                if (obj.obj_class[0] in ["3t", "4t", "5t", "6t"]):
+                    obj.obj_class[0][0] = str(len(obj.max_axles_detected))
+                    obj.axle_config = _get_axleconfig(obj.max_axles_detected)
 
             _axles = temp
             if len(_axles) == 0:
