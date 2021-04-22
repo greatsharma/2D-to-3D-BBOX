@@ -58,7 +58,7 @@ def draw_text_with_backgroud(
     )
 
 
-def checkpoint(h, k, x, y, a, b, angle):
+def _checkpoint(h, k, x, y, a, b, angle):
     angle = math.radians(angle)
 
     cosa = math.cos(angle)
@@ -184,7 +184,7 @@ def draw_tracked_objects(self, frame, tracked_objs):
                 thickness=2,
             )
 
-        v = checkpoint(
+        v = _checkpoint(
             centre[0],
             centre[1],
             obj_bottom[0],
@@ -205,3 +205,16 @@ def draw_tracked_objects(self, frame, tracked_objs):
 def draw_axles(frame, axles):
     for axle in axles:
         cv2.rectangle(frame, axle[:2], axle[2:], (255, 255, 0), 2)
+
+
+def draw_3dbox(frame, pts, boxcolor=(0,255,0)):
+    pt1, pt2, pt3, pt4, pt5, pt6, pt7 = pts
+    cv2.line(frame, pt1, pt2, boxcolor, 2)
+    cv2.line(frame, pt2, pt3, boxcolor, 2)
+    cv2.line(frame, pt1, pt4, boxcolor, 2)
+    cv2.line(frame, pt3, pt4, boxcolor, 2)
+    cv2.line(frame, pt4, pt5, boxcolor, 2)
+    cv2.line(frame, pt5, pt6, boxcolor, 2)
+    cv2.line(frame, pt3, pt6, boxcolor, 2)
+    cv2.line(frame, pt5, pt7, boxcolor, 2)
+    cv2.line(frame, pt1, pt7, boxcolor, 2)

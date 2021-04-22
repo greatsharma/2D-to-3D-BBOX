@@ -7,10 +7,12 @@ import numpy as np
 from scipy.spatial import distance
 from multiprocessing import Process, Queue, Value
 
+from utils import axle_assignments
 from trackers import KalmanTracker
 from camera_metadata import CAMERA_METADATA
+from detectors.trt_detector import TrtYoloDetector
 from utils import init_lane_detector, init_direction_detector, init_within_interval
-from utils import intersection_over_rect, draw_text_with_backgroud, draw_tracked_objects
+from utils import draw_text_with_backgroud, draw_tracked_objects, draw_3dbox
 
 
 vidcap1 = cv2.VideoCapture("inputs/datlcam1_clip1.mp4")
@@ -90,86 +92,6 @@ def line_intersect(A1, A2, B1, B2):
     y = Ay1 + uA * (Ay2 - Ay1)
  
     return int(x), int(y)
-
-
-def _get_axleconfig(axles):
-    axle_dists = []
-
-    for i in range(len(axles) - 1):
-        dist = distance.euclidean(axles[i], axles[i + 1])
-        axle_dists.append(dist)
-
-    num_axles = len(axles)
-
-    if num_axles == 3:
-        axleconfig = "12"
-    elif num_axles == 4:
-        if axle_dists[0] > axle_dists[1] and axle_dists[0] > axle_dists[2]:
-            axleconfig = "13"
-        else:
-            axleconfig = "112"
-    elif num_axles == 5:
-        if axle_dists[1] > axle_dists[3]:
-            axleconfig = "113"
-        else:
-            axleconfig = "122"
-    elif num_axles == 6:
-        axleconfig = "123"
-    else:
-        axleconfig = "11"
-
-    return axleconfig
-
-
-def _axle_assignments(tracked_objs, axles, sort_order):
-    if sort_order not in ["asce", "desc"]:
-        raise ValueError("Invalid sort_order, choose one among [asce, desc]")
-
-    _axles = axles.copy()
-
-    for obj in tracked_objs.values():
-        if obj.obj_class[0] != "tw":
-            obj_ax = []
-
-            temp = []
-            for ax in _axles:
-                if intersection_over_rect(obj.rect, ax) > 0.9:
-                    obj_ax.append(ax)
-                else:
-                    temp.append(ax)
-
-            if sort_order == "asce":
-                obj_ax = sorted(obj_ax, key=lambda x: x[0])
-            else:
-                obj_ax = sorted(obj_ax, key=lambda x: x[0], reverse=True)
-
-            obj.axle_track.append(obj_ax)
-
-            if len(obj_ax) > len(obj.axles):
-                obj.axles = obj_ax
-
-            if (
-                obj.obj_class[0] in ["3t", "4t", "5t", "6t"]
-                and len(obj.axles) == int(obj.obj_class[0][0])
-            ):
-                obj.axle_config = _get_axleconfig(obj.axles)
-
-            _axles = temp
-            if len(_axles) == 0:
-                break
-
-
-def draw_3dbox(frame, pts, boxcolor=(0,255,0)):
-    pt1, pt2, pt3, pt4, pt5, pt6, pt7 = pts
-    cv2.line(frame, pt1, pt2, boxcolor, 2)
-    cv2.line(frame, pt2, pt3, boxcolor, 2)
-    cv2.line(frame, pt1, pt4, boxcolor, 2)
-    cv2.line(frame, pt3, pt4, boxcolor, 2)
-    cv2.line(frame, pt4, pt5, boxcolor, 2)
-    cv2.line(frame, pt5, pt6, boxcolor, 2)
-    cv2.line(frame, pt3, pt6, boxcolor, 2)
-    cv2.line(frame, pt5, pt7, boxcolor, 2)
-    cv2.line(frame, pt1, pt7, boxcolor, 2)
 
 
 def twoD_2_threeD_primarycam(obj):
@@ -503,7 +425,7 @@ def detection_primarycam(preprocessedframes1_queue, tilldetection1_queue):
 
             tracked_objects = tracker.update(detection_list)
 
-            _axle_assignments(tracked_objects, axles, sort_order="asce")
+            axle_assignments(tracked_objects, axles, sort_order="asce")
 
             for obj in tracked_objects.values():
                 obj.obj_bottom, obj.threed_box = twoD_2_threeD_primarycam(obj)
@@ -554,7 +476,7 @@ def detection_secondarycam(preprocessedframes2_queue, tilldetection2_queue):
 
             tracked_objects = tracker.update(detection_list)
 
-            _axle_assignments(tracked_objects, axles, sort_order="asce")
+            axle_assignments(tracked_objects, axles, sort_order="asce")
 
             for obj in tracked_objects.values():
                 obj.obj_bottom, obj.threed_box = twoD_2_threeD_secondarycam(obj)

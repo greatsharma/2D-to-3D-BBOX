@@ -5,9 +5,12 @@ import datetime
 import subprocess
 import numpy as np
 
-from utils import init_lane_detector
+from utils import axle_assignments
+from trackers import KalmanTracker
 from camera_metadata import CAMERA_METADATA
 from detectors.trt_detector import TrtYoloDetector
+from utils import init_lane_detector, init_direction_detector, init_within_interval
+from utils import draw_text_with_backgroud, draw_tracked_objects, draw_3dbox
 
 
 WRITE_VIDEO = False
@@ -34,6 +37,21 @@ detector = TrtYoloDetector(
     init_lane_detector(camera_meta),
     detection_thresh=0.5,
     bottom_type="bottom-left"
+)
+
+direction_detector = init_direction_detector(camera_meta)
+within_interval = init_within_interval(camera_meta)
+initial_maxdistances = camera_meta["initial_maxdistances"]
+lane_angles = camera_meta["lane_angles"]
+velocity_regression = None
+
+tracker = KalmanTracker(
+    direction_detector,
+    initial_maxdistances,
+    within_interval,
+    lane_angles,
+    velocity_regression,
+    max_absent=1
 )
 
 date = datetime.datetime.now()
@@ -73,14 +91,15 @@ def line_intersect(A1, A2, B1, B2):
     return int(x), int(y)
 
 
-def twod_2_threed(frame, det, boxcolor=(0,255,0)):
-    rect = det["rect"]
+def twoD_2_threeD_secondarycam(obj):
+    rect = obj.rect
     rect = list(rect)
+    objcls = obj.obj_class[0]
 
-    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+    if objcls in ["tw", "auto", "car", "ml"]:
         height_ratio = 0.05
         width_ratio =  0.00039 * rect[2] + 0.396
-    elif det["lane"] == "3":
+    elif obj.lane == "3":
         height_ratio = 0.06
         width_ratio = -0.000304 * rect[0] + 0.388
     else:
@@ -89,13 +108,13 @@ def twod_2_threed(frame, det, boxcolor=(0,255,0)):
 
     height = (rect[3] - rect[1])
 
-    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+    if objcls in ["tw", "auto", "car", "ml"]:
         rect[3] += int(height * 0.08)
     else:
-        if len(det["axles"]) > 0:
-            last_axle = det["axles"][0]
+        if len(obj.axles) > 0:
+            last_axle = obj.axles[0]
             lastaxle_btm_midpt = int((last_axle[0] + last_axle[2])/2), last_axle[3]
-        elif det["lane"] == "1":
+        elif obj.lane == "1":
             rect[3] += int(height * 0.12)
         else:
             rect[3] += int(height * 0.1)
@@ -120,9 +139,9 @@ def twod_2_threed(frame, det, boxcolor=(0,255,0)):
         pt4_temp = line_intersect(pt1, (cx,cy), (rect[0], rect[3]), (rect[2], rect[3]))
 
     m = -(pt1[1] - pt2[1]) / (pt1[0] - pt2[0])
-    if det["obj_class"][0] == "tw":
+    if objcls == "tw":
         m += m
-    elif det["obj_class"][0] in ["auto", "car", "ml"]:
+    elif objcls in ["auto", "car", "ml"]:
         m += 4*m
     c = -pt3[1] - m * pt3[0]
     pt_temp = int((-540-c)/m), 540
@@ -138,7 +157,7 @@ def twod_2_threed(frame, det, boxcolor=(0,255,0)):
         if pt5 is None:
             raise UnboundLocalError
     except UnboundLocalError:
-        if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+        if objcls in ["tw", "auto", "car", "ml"]:
             c1, c2 = pt2, (1227, -35)
             cx = int(c2[0] + (c1[0]-c2[0]) * -3.8)
             cy = int(c2[1] + (c1[1]-c2[1]) * -3.8)
@@ -149,34 +168,25 @@ def twod_2_threed(frame, det, boxcolor=(0,255,0)):
             pt2 = line_intersect(pt2, (cx,cy), pt1, pt_temp)
         
         pt5 = line_intersect(pt4, pt_temp2, (rect[0], rect[3]), (rect[2], rect[3]))
-    
+
     m = -(pt3[1] - pt4[1]) / (pt3[0] - pt4[0])
-    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+    if objcls in ["tw", "auto", "car", "ml"]:
         m += 0.2 * m
     else:
         m += 0.5 * m
     c = -pt5[1] - m * pt5[0]
     pt_temp = int((0-c)/m), 0
-    
+
     pt6 = line_intersect(pt5, pt_temp, (rect[0], rect[1]), (rect[0], rect[3]+height))
     pt7 = line_intersect(pt5, (1227, -35), (rect[2], rect[1]), (rect[2], rect[3]))
 
-    cv2.line(frame, pt1, pt2, boxcolor, 2)
-    cv2.line(frame, pt2, pt3, boxcolor, 2)
-    cv2.line(frame, pt1, pt4, boxcolor, 2)
-    cv2.line(frame, pt3, pt4, boxcolor, 2)
-    cv2.line(frame, pt4, pt5, boxcolor, 2)
-    cv2.line(frame, pt5, pt6, boxcolor, 2)
-    cv2.line(frame, pt3, pt6, boxcolor, 2)
-    cv2.line(frame, pt5, pt7, boxcolor, 2)
-    cv2.line(frame, pt1, pt7, boxcolor, 2)
-
-    if det["lane"] == "1" and det["obj_class"][0] not in ["tw", "auto", "car", "ml"]:
+    if obj.lane == "1" and objcls not in ["tw", "auto", "car", "ml"]:
         btm_pt = int(0.4*pt5[0] + 0.6*pt6[0]), int(0.4*pt5[1] + 0.6*pt6[1])
     else:
         btm_pt = int(0.5*pt5[0] + 0.5*pt6[0]), int(0.5*pt5[1] + 0.5*pt6[1])
 
-    return btm_pt
+    return btm_pt, [pt1, pt2, pt3, pt4, pt5, pt6, pt7]
+
 
 frame_count = 0
 
@@ -194,22 +204,32 @@ while vidcap2.isOpened():
     # for l in ["leftlane", "middlelane", "rightlane"]:
     #     cv2.polylines(frame2, [camera_meta[f"{l}_coords"]], isClosed=True, color=(0, 0, 0), thickness=2)
 
-    detection_list = detector.detect(frame2)
-
     frame_count += 1
 
-    for det in detection_list:
-        rect = det["rect"]
-        btm = det["obj_bottom"]
+    detection_list, axles = detector.detect(frame2)
 
-        # if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
+    tracked_objects = tracker.update(detection_list)
+
+    axle_assignments(tracked_objects, axles, sort_order="asce")
+
+    for obj in tracked_objects.values():
+        obj.obj_bottom, obj.threed_box = twoD_2_threeD_secondarycam(obj)
+        
+        btm = obj.obj_bottom
+        lane = obj.lane
+
+        # if obj.obj_class[0] not in ["car", "ml", "auto", "tw"]:
+        #     rect = obj.rect
         #     cv2.rectangle(frame2, rect[:2], rect[2:], (255,0,0), 1)
-    
-        btm = twod_2_threed(frame2, det)
+
+        draw_3dbox(frame2, obj.threed_box)
         cv2.circle(frame2, btm, 3, (0,0,255), -1)
 
-        for ax in det["axles"]:
-            cv2.rectangle(frame2, ax[:2], ax[2:], (255,0,255), 3)
+        try:
+            for ax in obj.axle_track[-1]:
+                cv2.rectangle(frame2, ax[:2], ax[2:], (255,0,255), 3)
+        except IndexError:
+            pass
 
     if WRITE_VIDEO:
         videowriter.write(frame2)

@@ -1,5 +1,6 @@
 from typing import Callable
 from scipy.spatial import distance
+from utils.detector_utils import intersection_over_rect
 
 
 def init_within_interval(camera_meta: dict) -> Callable:
@@ -35,3 +36,70 @@ def init_direction_detector(camera_meta: dict) -> Callable:
             )
 
     return direction_detector
+
+
+def get_axleconfig(axles):
+    axle_dists = []
+
+    for i in range(len(axles) - 1):
+        dist = distance.euclidean(axles[i], axles[i + 1])
+        axle_dists.append(dist)
+
+    num_axles = len(axles)
+
+    if num_axles == 3:
+        axleconfig = "12"
+    elif num_axles == 4:
+        if axle_dists[0] > axle_dists[1] and axle_dists[0] > axle_dists[2]:
+            axleconfig = "13"
+        else:
+            axleconfig = "112"
+    elif num_axles == 5:
+        if axle_dists[1] > axle_dists[3]:
+            axleconfig = "113"
+        else:
+            axleconfig = "122"
+    elif num_axles == 6:
+        axleconfig = "123"
+    else:
+        axleconfig = "11"
+
+    return axleconfig
+
+
+def axle_assignments(tracked_objs, axles, sort_order):
+    if sort_order not in ["asce", "desc"]:
+        raise ValueError("Invalid sort_order, choose one among [asce, desc]")
+
+    _axles = axles.copy()
+
+    for obj in tracked_objs.values():
+        if obj.obj_class[0] != "tw":
+            obj_ax = []
+
+            temp = []
+            for ax in _axles:
+                if intersection_over_rect(obj.rect, ax) > 0.9:
+                    obj_ax.append(ax)
+                else:
+                    temp.append(ax)
+
+            if sort_order == "asce":
+                obj_ax = sorted(obj_ax, key=lambda x: x[0])
+            else:
+                obj_ax = sorted(obj_ax, key=lambda x: x[0], reverse=True)
+
+            obj.axle_track.append(obj_ax)
+
+            if len(obj_ax) > len(obj.axles):
+                obj.axles = obj_ax
+
+            if (
+                obj.obj_class[0] in ["3t", "4t", "5t", "6t"]
+                and len(obj.axles) == int(obj.obj_class[0][0])
+            ):
+                obj.axle_config = _get_axleconfig(obj.axles)
+
+            _axles = temp
+            if len(_axles) == 0:
+                break

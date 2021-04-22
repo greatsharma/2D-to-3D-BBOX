@@ -4,7 +4,7 @@ from typing import Callable
 
 import darknet
 import tensorrt as trt
-from utils import nonmax_suppression, intersection_over_rect
+from utils import nonmax_suppression
 
 
 class BaseDetector(object):
