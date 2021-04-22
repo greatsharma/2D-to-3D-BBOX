@@ -181,22 +181,22 @@ class BaseTracker(object):
     def _deregister_object(self, obj_id) -> None:
         txt = f"{obj_id} : {self.objects[obj_id].obj_class[0]}"
 
-        if self.objects[obj_id].obj_class[0] in [
-            "2t",
-            "3t",
-            "4t",
-            "5t",
-            "6t",
-            "bus",
-            "lgv",
-        ]:
-            if len(self.objects[obj_id].axle_track) >= 2:
-                txt += f" : {self.objects[obj_id].axle_track}"
-                self.trackpath_filewriter.write(txt + "\n")
-        else:
-            if len(self.objects[obj_id].path) >= 2:
-                txt += f" : {self.objects[obj_id].path}"
-                self.trackpath_filewriter.write(txt + "\n")
+        # if self.objects[obj_id].obj_class[0] in [
+        #     "2t",
+        #     "3t",
+        #     "4t",
+        #     "5t",
+        #     "6t",
+        #     "bus",
+        #     "lgv",
+        # ]:
+        #     if len(self.objects[obj_id].axle_track) >= 2:
+        #         txt += f" : {self.objects[obj_id].axle_track}"
+        #         self.trackpath_filewriter.write(txt + "\n")
+        # else:
+        #     if len(self.objects[obj_id].path) >= 2:
+        #         txt += f" : {self.objects[obj_id].path}"
+        #         self.trackpath_filewriter.write(txt + "\n")
 
         del self.objects[obj_id]
 

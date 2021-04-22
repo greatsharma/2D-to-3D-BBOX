@@ -46,36 +46,36 @@ class KalmanTracker(BaseTracker):
         if z is None:
 
             # updating state, x' = x + v.dt + u
-            x = F * x  # + u
+            x = F * x  + u
             x = tuple(x.astype(int).ravel().tolist()[0])
 
-            if lost:
-                x = list(x)
+            # if lost:
+            #     x = list(x)
 
-                objlane = self.objects[obj_id].lane
-                objcls = self.objects[obj_id].obj_class[0]
+            #     objlane = self.objects[obj_id].lane
+            #     objcls = self.objects[obj_id].obj_class[0]
                 
-                mx = self.velocity_regression[objlane][objcls][0][0]
-                my = self.velocity_regression[objlane][objcls][1][0]
-                cx = self.velocity_regression[objlane][objcls][0][1]
-                cy = self.velocity_regression[objlane][objcls][1][1]
-                x[1] = mx * x[0] + cx
-                x[3] = my * x[2] + cy
+            #     mx = self.velocity_regression[objlane][objcls][0][0]
+            #     my = self.velocity_regression[objlane][objcls][1][0]
+            #     cx = self.velocity_regression[objlane][objcls][0][1]
+            #     cy = self.velocity_regression[objlane][objcls][1][1]
+            #     x[1] = mx * x[0] + cx
+            #     x[3] = my * x[2] + cy
 
-                pt1 = [self.objects[obj_id].state[0], -self.objects[obj_id].state[2]]
-                pt2 = [x[0], -x[2]]
-                angle = math.atan2(pt2[1] - pt1[1], pt2[0] - pt1[0])
-                angle = self.lane_angles[objlane] - angle
+            #     pt1 = [self.objects[obj_id].state[0], -self.objects[obj_id].state[2]]
+            #     pt2 = [x[0], -x[2]]
+            #     angle = math.atan2(pt2[1] - pt1[1], pt2[0] - pt1[0])
+            #     angle = self.lane_angles[objlane] - angle
 
-                c = math.cos(angle)
-                s = math.sin(angle)
-                pt2[0] -= pt1[0]
-                pt2[1] -= pt1[1]
+            #     c = math.cos(angle)
+            #     s = math.sin(angle)
+            #     pt2[0] -= pt1[0]
+            #     pt2[1] -= pt1[1]
 
-                x[0] = int(pt1[0] + c * pt2[0] - s * pt2[1])
-                x[2] = -int(pt1[1] + s * pt2[0] + c * pt2[1])
+            #     x[0] = int(pt1[0] + c * pt2[0] - s * pt2[1])
+            #     x[2] = -int(pt1[1] + s * pt2[0] + c * pt2[1])
 
-                x = tuple(x)
+            #     x = tuple(x)
 
             self.objects[obj_id].P = F * self.objects[obj_id].P * F.T + Q
             self.objects[obj_id].state = x

@@ -4,10 +4,13 @@ import time
 import datetime
 import subprocess
 import numpy as np
+from scipy.spatial import distance
 from multiprocessing import Process, Queue, Value
 
+from trackers import KalmanTracker
 from camera_metadata import CAMERA_METADATA
-from utils import init_lane_detector, draw_text_with_backgroud
+from utils import init_lane_detector, init_direction_detector, init_within_interval
+from utils import intersection_over_rect, draw_text_with_backgroud, draw_tracked_objects
 
 
 vidcap1 = cv2.VideoCapture("inputs/datlcam1_clip1.mp4")
@@ -21,7 +24,7 @@ height2 = int(vidcap2.get(cv2.CAP_PROP_FRAME_HEIGHT))
 if int(vidcap1.get(cv2.CAP_PROP_FPS)) != int(vidcap2.get(cv2.CAP_PROP_FPS)):
     raise ValueError("Both the videos has different fps")
 
-vidcap2.set(cv2.CAP_PROP_POS_FRAMES, 506)
+vidcap2.set(cv2.CAP_PROP_POS_FRAMES, 505)
 
 _, initial_frame1 = vidcap1.read()
 _, initial_frame2 = vidcap2.read()
@@ -89,6 +92,73 @@ def line_intersect(A1, A2, B1, B2):
     return int(x), int(y)
 
 
+def _get_axleconfig(axles):
+    axle_dists = []
+
+    for i in range(len(axles) - 1):
+        dist = distance.euclidean(axles[i], axles[i + 1])
+        axle_dists.append(dist)
+
+    num_axles = len(axles)
+
+    if num_axles == 3:
+        axleconfig = "12"
+    elif num_axles == 4:
+        if axle_dists[0] > axle_dists[1] and axle_dists[0] > axle_dists[2]:
+            axleconfig = "13"
+        else:
+            axleconfig = "112"
+    elif num_axles == 5:
+        if axle_dists[1] > axle_dists[3]:
+            axleconfig = "113"
+        else:
+            axleconfig = "122"
+    elif num_axles == 6:
+        axleconfig = "123"
+    else:
+        axleconfig = "11"
+
+    return axleconfig
+
+
+def _axle_assignments(tracked_objs, axles, sort_order):
+    if sort_order not in ["asce", "desc"]:
+        raise ValueError("Invalid sort_order, choose one among [asce, desc]")
+
+    _axles = axles.copy()
+
+    for obj in tracked_objs.values():
+        if obj.obj_class[0] != "tw":
+            obj_ax = []
+
+            temp = []
+            for ax in _axles:
+                if intersection_over_rect(obj.rect, ax) > 0.9:
+                    obj_ax.append(ax)
+                else:
+                    temp.append(ax)
+
+            if sort_order == "asce":
+                obj_ax = sorted(obj_ax, key=lambda x: x[0])
+            else:
+                obj_ax = sorted(obj_ax, key=lambda x: x[0], reverse=True)
+
+            obj.axle_track.append(obj_ax)
+
+            if len(obj_ax) > len(obj.axles):
+                obj.axles = obj_ax
+
+            if (
+                obj.obj_class[0] in ["3t", "4t", "5t", "6t"]
+                and len(obj.axles) == int(obj.obj_class[0][0])
+            ):
+                obj.axle_config = _get_axleconfig(obj.axles)
+
+            _axles = temp
+            if len(_axles) == 0:
+                break
+
+
 def draw_3dbox(frame, pts, boxcolor=(0,255,0)):
     pt1, pt2, pt3, pt4, pt5, pt6, pt7 = pts
     cv2.line(frame, pt1, pt2, boxcolor, 2)
@@ -102,14 +172,15 @@ def draw_3dbox(frame, pts, boxcolor=(0,255,0)):
     cv2.line(frame, pt1, pt7, boxcolor, 2)
 
 
-def twoD_2_threeD_primarycam(det):
-    rect = det["rect"]
+def twoD_2_threeD_primarycam(obj):
+    rect = obj.rect
     rect = list(rect)
+    objcls = obj.obj_class[0]
 
-    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+    if objcls in ["tw", "auto", "car", "ml"]:
         height_ratio = 0.1
         width_ratio = -0.000353 * rect[2] + 0.595
-    elif det["lane"] == "1":
+    elif obj.lane == "1":
         height_ratio = 0.06
         width_ratio = -0.000304 * rect[2] + 0.388
     else:
@@ -118,11 +189,11 @@ def twoD_2_threeD_primarycam(det):
 
     height = (rect[3] - rect[1])
 
-    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+    if objcls in ["tw", "auto", "car", "ml"]:
         rect[3] += int(height * 0.08)
     else:
-        if len(det["axles"]) > 0:
-            last_axle = det["axles"][-1]
+        if len(obj.axles) > 0:
+            last_axle = obj.axles[-1]
             lastaxle_btm_midpt = int((last_axle[0] + last_axle[2])/2), last_axle[3]
         else:
             rect[3] += int(height * 0.1)
@@ -147,7 +218,7 @@ def twoD_2_threeD_primarycam(det):
         pt4_temp = line_intersect(pt1, (cx,cy), (rect[0], rect[3]), (rect[2], rect[3]))
 
     m = -(pt1[1] - pt2[1]) / (pt1[0] - pt2[0])
-    if det["obj_class"][0] == "tw":
+    if objcls == "tw":
         m = 0.75 * m
     c = -pt3[1] - m * pt3[0]
     pt_temp = int((-540-c)/m), 540
@@ -174,7 +245,7 @@ def twoD_2_threeD_primarycam(det):
 
     btm_pt = (pt5[0] + pt6[0]) // 2, (pt5[1] + pt6[1]) // 2
 
-    if det["lane"] == "3":
+    if obj.lane == "3":
         btm_pt = int(0.5*pt5[0] + 0.5*pt6[0]), int(0.5*pt5[1] + 0.5*pt6[1])
     else:
         btm_pt = int(0.4*pt5[0] + 0.6*pt6[0]), int(0.4*pt5[1] + 0.6*pt6[1])
@@ -182,14 +253,15 @@ def twoD_2_threeD_primarycam(det):
     return btm_pt, [pt1, pt2, pt3, pt4, pt5, pt6, pt7]
 
 
-def twoD_2_threeD_secondarycam(det):
-    rect = det["rect"]
+def twoD_2_threeD_secondarycam(obj):
+    rect = obj.rect
     rect = list(rect)
+    objcls = obj.obj_class[0]
 
-    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+    if objcls in ["tw", "auto", "car", "ml"]:
         height_ratio = 0.05
         width_ratio =  0.00039 * rect[2] + 0.396
-    elif det["lane"] == "3":
+    elif obj.lane == "3":
         height_ratio = 0.06
         width_ratio = -0.000304 * rect[0] + 0.388
     else:
@@ -198,13 +270,13 @@ def twoD_2_threeD_secondarycam(det):
 
     height = (rect[3] - rect[1])
 
-    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+    if objcls in ["tw", "auto", "car", "ml"]:
         rect[3] += int(height * 0.08)
     else:
-        if len(det["axles"]) > 0:
-            last_axle = det["axles"][0]
+        if len(obj.axles) > 0:
+            last_axle = obj.axles[0]
             lastaxle_btm_midpt = int((last_axle[0] + last_axle[2])/2), last_axle[3]
-        elif det["lane"] == "1":
+        elif obj.lane == "1":
             rect[3] += int(height * 0.12)
         else:
             rect[3] += int(height * 0.1)
@@ -229,9 +301,9 @@ def twoD_2_threeD_secondarycam(det):
         pt4_temp = line_intersect(pt1, (cx,cy), (rect[0], rect[3]), (rect[2], rect[3]))
 
     m = -(pt1[1] - pt2[1]) / (pt1[0] - pt2[0])
-    if det["obj_class"][0] == "tw":
+    if objcls == "tw":
         m += m
-    elif det["obj_class"][0] in ["auto", "car", "ml"]:
+    elif objcls in ["auto", "car", "ml"]:
         m += 4*m
     c = -pt3[1] - m * pt3[0]
     pt_temp = int((-540-c)/m), 540
@@ -247,7 +319,7 @@ def twoD_2_threeD_secondarycam(det):
         if pt5 is None:
             raise UnboundLocalError
     except UnboundLocalError:
-        if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+        if objcls in ["tw", "auto", "car", "ml"]:
             c1, c2 = pt2, (1227, -35)
             cx = int(c2[0] + (c1[0]-c2[0]) * -3.8)
             cy = int(c2[1] + (c1[1]-c2[1]) * -3.8)
@@ -260,7 +332,7 @@ def twoD_2_threeD_secondarycam(det):
         pt5 = line_intersect(pt4, pt_temp2, (rect[0], rect[3]), (rect[2], rect[3]))
 
     m = -(pt3[1] - pt4[1]) / (pt3[0] - pt4[0])
-    if det["obj_class"][0] in ["tw", "auto", "car", "ml"]:
+    if objcls in ["tw", "auto", "car", "ml"]:
         m += 0.2 * m
     else:
         m += 0.5 * m
@@ -270,7 +342,7 @@ def twoD_2_threeD_secondarycam(det):
     pt6 = line_intersect(pt5, pt_temp, (rect[0], rect[1]), (rect[0], rect[3]+height))
     pt7 = line_intersect(pt5, (1227, -35), (rect[2], rect[1]), (rect[2], rect[3]))
 
-    if det["lane"] == "1" and det["obj_class"][0] not in ["tw", "auto", "car", "ml"]:
+    if obj.lane == "1" and objcls not in ["tw", "auto", "car", "ml"]:
         btm_pt = int(0.4*pt5[0] + 0.6*pt6[0]), int(0.4*pt5[1] + 0.6*pt6[1])
     else:
         btm_pt = int(0.5*pt5[0] + 0.5*pt6[0]), int(0.5*pt5[1] + 0.5*pt6[1])
@@ -286,8 +358,8 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
         if tilldetection1_queue.qsize() > 0 and tilldetection2_queue.qsize() > 0:
             tik2 = time.time()
 
-            detection_list1, frame1, frame_count1, fps_list1 = tilldetection1_queue.get()
-            detection_list2, frame2, frame_count2, fps_list2 = tilldetection2_queue.get()     
+            trackedobjs_list1, frame1, frame_count1, fps_list1 = tilldetection1_queue.get()
+            trackedobjs_list2, frame2, frame_count2, fps_list2 = tilldetection2_queue.get()     
 
             if frame_count1 != frame_count2:
                 print("frames out of sync !")
@@ -299,9 +371,7 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
             # for l in ["leftlane", "middlelane", "rightlane"]:
             #     cv2.polylines(frame2, [camera_meta2[f"{l}_coords"]], isClosed=True, color=(0, 0, 0), thickness=2)
 
-            for det in detection_list1:
-                rect = det["rect"]
-
+            for obj in trackedobjs_list1.values():
                 # obj_centroid = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
                 # x,y = obj_centroid[0] - 10, obj_centroid[1]
                 # draw_text_with_backgroud(frame1,det["obj_class"][0],x,y,font_scale=0.4,thickness=1,background=(0, 0, 0),
@@ -310,14 +380,16 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
                 # if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
                 #     cv2.rectangle(frame1, rect[:2], rect[2:], (255,0,0), 1)
 
-                btm, pts  = twoD_2_threeD_primarycam(det)
-                draw_3dbox(frame1, pts)
+                btm = obj.obj_bottom
+                lane = obj.lane
+
+                draw_3dbox(frame1, obj.threed_box)
                 cv2.circle(frame1, btm, 3, (0,0,255), -1)
 
-                if det['lane'] == "1":
+                if lane == "1":
                     btmx_tf = int((0.65523379 * btm[0]) + (-3.67679969 * btm[1]) + 1349.9740589597031)
                     btmy_tf = int((0.41925539 * btm[0]) + (-0.04235352 * btm[1]) + 99.19415894167156)
-                elif det['lane'] == "2":
+                elif lane == "2":
                     btmx_tf = int((0.55305366 * btm[0]) + (-3.3535726 * btm[1]) + 1301.5774568947409)
                     btmy_tf = int((0.37036275  * btm[0]) + (-0.02834603 * btm[1]) + 113.54696288217643)
                 else:
@@ -326,12 +398,13 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
 
                 cv2.circle(frame2, (int(btmx_tf), int(btmy_tf)), 3, (0,0,255), -1)
 
-                for ax in det["axles"]:
-                    cv2.rectangle(frame1, ax[:2], ax[2:], (255,0,255), 3)
+                try:
+                    for ax in obj.axle_track[-1]:
+                        cv2.rectangle(frame1, ax[:2], ax[2:], (255,0,255), 3)
+                except IndexError:
+                    pass
 
-            for det in detection_list2:
-                rect = det["rect"]
-
+            for obj in trackedobjs_list2.values():
                 # obj_centroid = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
                 # x,y = obj_centroid[0] - 10, obj_centroid[1]
                 # draw_text_with_backgroud(frame2,det["obj_class"][0],x,y,font_scale=0.4,thickness=1,background=(0, 0, 0),
@@ -340,12 +413,17 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
                 # if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
                 #     cv2.rectangle(frame2, rect[:2], rect[2:], (255,0,0), 1)
 
-                btm, pts  = twoD_2_threeD_secondarycam(det)
-                draw_3dbox(frame2, pts)
-                cv2.circle(frame2, btm, 3, (255,0,0), -1)
+                btm = obj.obj_bottom
+                lane = obj.lane
 
-                for ax in det["axles"]:
-                    cv2.rectangle(frame2, ax[:2], ax[2:], (255,0,255), 3)
+                draw_3dbox(frame2, obj.threed_box)
+                cv2.circle(frame2, btm, 3, (0,0,255), -1)
+
+                try:
+                    for ax in obj.axle_track[-1]:
+                        cv2.rectangle(frame2, ax[:2], ax[2:], (255,0,255), 3)
+                except IndexError:
+                    pass
 
             final_frame = np.hstack((frame1, frame2))
             videowriter.write(final_frame)
@@ -399,20 +477,43 @@ def detection_primarycam(preprocessedframes1_queue, tilldetection1_queue):
         bottom_type="bottom-right"
     )
 
+    direction_detector = init_direction_detector(camera_meta1)
+    within_interval = init_within_interval(camera_meta1)
+    initial_maxdistances = camera_meta1["initial_maxdistances"]
+    lane_angles = camera_meta1["lane_angles"]
+    velocity_regression = None
+
+    tracker = KalmanTracker(
+        direction_detector,
+        initial_maxdistances,
+        within_interval,
+        lane_angles,
+        velocity_regression,
+        max_absent=1
+    )
+
     tik1 = time.time()
     while True:
         if preprocessedframes1_queue.qsize() > 0:
             tik2 = time.time()
 
             frame1, frame_count, fps_list = preprocessedframes1_queue.get()
-            detection_list = detector.detect(frame1)
+
+            detection_list, axles = detector.detect(frame1)
+
+            tracked_objects = tracker.update(detection_list)
+
+            _axle_assignments(tracked_objects, axles, sort_order="asce")
+
+            for obj in tracked_objects.values():
+                obj.obj_bottom, obj.threed_box = twoD_2_threeD_primarycam(obj)
 
             tok = time.time()
             avg_fps = round(frame_count / (tok - tik1), 2)
             inst_fps = round(1.0 / (tok - tik2), 1)
             fps_list.append((inst_fps, avg_fps))
 
-            tilldetection1_queue.put((detection_list, frame1, frame_count, fps_list))
+            tilldetection1_queue.put((tracked_objects, frame1, frame_count, fps_list))
 
 
 def detection_secondarycam(preprocessedframes2_queue, tilldetection2_queue):
@@ -427,20 +528,43 @@ def detection_secondarycam(preprocessedframes2_queue, tilldetection2_queue):
         bottom_type="bottom-left"
     )
 
+    direction_detector = init_direction_detector(camera_meta2)
+    within_interval = init_within_interval(camera_meta2)
+    initial_maxdistances = camera_meta2["initial_maxdistances"]
+    lane_angles = camera_meta2["lane_angles"]
+    velocity_regression = None
+
+    tracker = KalmanTracker(
+        direction_detector,
+        initial_maxdistances,
+        within_interval,
+        lane_angles,
+        velocity_regression,
+        max_absent=1
+    )
+
     tik1 = time.time()
     while True:
         if preprocessedframes2_queue.qsize() > 0:
             tik2 = time.time()
 
             frame2, frame_count, fps_list = preprocessedframes2_queue.get()
-            detection_list = detector.detect(frame2)
+
+            detection_list, axles = detector.detect(frame2)
+
+            tracked_objects = tracker.update(detection_list)
+
+            _axle_assignments(tracked_objects, axles, sort_order="asce")
+
+            for obj in tracked_objects.values():
+                obj.obj_bottom, obj.threed_box = twoD_2_threeD_secondarycam(obj)
 
             tok = time.time()
             avg_fps = round(frame_count / (tok - tik1), 2)
             inst_fps = round(1.0 / (tok - tik2), 1)
             fps_list.append((inst_fps, avg_fps))
 
-            tilldetection2_queue.put((detection_list, frame2, frame_count, fps_list))
+            tilldetection2_queue.put((tracked_objects, frame2, frame_count, fps_list))
 
 
 preprocessedframe1_queue = Queue()
