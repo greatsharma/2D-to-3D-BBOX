@@ -113,9 +113,8 @@ def twoD_2_threeD_primarycam(obj):
     if objcls in ["tw", "auto", "car", "ml"]:
         rect[3] += int(height * 0.08)
     else:
-        if len(obj.axles) > 0:
-            last_axle = obj.axles[-1]
-            lastaxle_btm_midpt = int((last_axle[0] + last_axle[2])/2), last_axle[3]
+        if obj.lastdetected_axle:
+            lastaxle_btm_midpt = int((obj.lastdetected_axle[0] + obj.lastdetected_axle[2])/2), obj.lastdetected_axle[3]
         else:
             rect[3] += int(height * 0.1)
 
@@ -151,7 +150,7 @@ def twoD_2_threeD_primarycam(obj):
         c1, c2 = lastaxle_btm_midpt, (-411, -54)
         cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
         cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
-        pt5 = line_intersect(pt4, pt_temp, lastaxle_btm_midpt, (cx,cy))
+        pt5 = line_intersect(pt4, pt_temp, (-411, -54), (cx,cy))
         if pt5 is None:
             raise UnboundLocalError
     except UnboundLocalError:
@@ -194,9 +193,8 @@ def twoD_2_threeD_secondarycam(obj):
     if objcls in ["tw", "auto", "car", "ml"]:
         rect[3] += int(height * 0.08)
     else:
-        if len(obj.axles) > 0:
-            last_axle = obj.axles[0]
-            lastaxle_btm_midpt = int((last_axle[0] + last_axle[2])/2), last_axle[3]
+        if obj.lastdetected_axle:
+            lastaxle_btm_midpt = int((obj.lastdetected_axle[0] + obj.lastdetected_axle[2])/2), obj.lastdetected_axle[3]
         elif obj.lane == "1":
             rect[3] += int(height * 0.12)
         else:
@@ -236,7 +234,7 @@ def twoD_2_threeD_secondarycam(obj):
         c1, c2 = lastaxle_btm_midpt, (1227, -35)
         cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
         cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
-        pt5 = line_intersect(pt4, pt_temp2, lastaxle_btm_midpt, (cx,cy))
+        pt5 = line_intersect(pt4, pt_temp2, (1227, -35), (cx,cy))
         if pt5 is None:
             raise UnboundLocalError
     except UnboundLocalError:
@@ -293,18 +291,40 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
             #     cv2.polylines(frame2, [camera_meta2[f"{l}_coords"]], isClosed=True, color=(0, 0, 0), thickness=2)
 
             for obj in trackedobjs_list1.values():
-                # obj_centroid = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
-                # x,y = obj_centroid[0] - 10, obj_centroid[1]
-                # draw_text_with_backgroud(frame1,det["obj_class"][0],x,y,font_scale=0.4,thickness=1,background=(0, 0, 0),
-                #                         foreground=(255,255,255), box_coords_1=(-8, 8), box_coords_2=(6, -6),)
-
-                # if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
-                #     cv2.rectangle(frame1, rect[:2], rect[2:], (255,0,0), 1)
-
+                rect = obj.rect
+                obj_centroid = (rect[0]+rect[2])//2, (rect[1]+rect[3])//2
                 btm = obj.obj_bottom
                 lane = obj.lane
 
-                draw_3dbox(frame1, obj.threed_box)
+                # if obj.obj_class[0] not in ["car", "ml", "auto", "tw"]:
+                #     cv2.rectangle(frame1, rect[:2], rect[2:], (255,0,0), 1)
+
+                if obj.absent_count == 0:
+                    x, y = obj_centroid[0] - 10, obj_centroid[1]
+                    draw_3dbox(frame1, obj.threed_box, linewidth=2)
+                else:
+                    x, y = btm[0] - 10, btm[1]
+
+                if obj.direction:
+                    txt = str(obj.objid) + ": " + obj.obj_class[0]
+                    draw_text_with_backgroud(frame1, txt, x, y, font_scale=0.6, thickness=2,
+                        background=(243, 227, 218), foreground=(0, 0, 0), box_coords_1=(-7, 7), box_coords_2=(10, -10),
+                    )
+
+                max_track_pts = 25
+                if len(obj.path) <= max_track_pts:
+                    path = obj.path
+                else:
+                    path = obj.path[len(obj.path) - max_track_pts :]
+
+                prev_point = None
+                for pt in path:
+                    if not prev_point is None:
+                        cv2.line(frame1, (prev_point[0], prev_point[1]), (pt[0], pt[1]),
+                            (0,255,0), thickness=2, lineType=8,
+                        )
+                    prev_point = pt
+
                 cv2.circle(frame1, btm, 3, (0,0,255), -1)
 
                 if lane == "1":
@@ -326,19 +346,40 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
                     pass
 
             for obj in trackedobjs_list2.values():
-                # obj_centroid = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
-                # x,y = obj_centroid[0] - 10, obj_centroid[1]
-                # draw_text_with_backgroud(frame2,det["obj_class"][0],x,y,font_scale=0.4,thickness=1,background=(0, 0, 0),
-                #                         foreground=(255,255,255), box_coords_1=(-8, 8), box_coords_2=(6, -6),)
-
-                # if det["obj_class"][0] not in ["car", "ml", "auto", "tw"]:
-                #     cv2.rectangle(frame2, rect[:2], rect[2:], (255,0,0), 1)
-
+                rect = obj.rect
+                obj_centroid = (rect[0]+rect[2])//2, (rect[1]+rect[3])//2
                 btm = obj.obj_bottom
                 lane = obj.lane
 
-                draw_3dbox(frame2, obj.threed_box)
-                cv2.circle(frame2, btm, 3, (0,0,255), -1)
+                # if obj.obj_class[0] not in ["car", "ml", "auto", "tw"]:
+                #     cv2.rectangle(frame2, rect[:2], rect[2:], (255,0,0), 1)
+
+                if obj.absent_count == 0:
+                    x, y = obj_centroid[0] - 10, obj_centroid[1]
+                    draw_3dbox(frame2, obj.threed_box, linewidth=2)
+                else:
+                    x, y = btm[0] - 10, btm[1]
+
+                if obj.direction:
+                    txt = str(obj.objid) + ": " + obj.obj_class[0]
+                    draw_text_with_backgroud(frame2, txt, x, y, font_scale=0.6, thickness=2,
+                        background=(243, 227, 218), foreground=(0, 0, 0), box_coords_1=(-7, 7), box_coords_2=(10, -10),
+                    )
+
+                max_track_pts = 25
+
+                if len(obj.path) <= max_track_pts:
+                    path = obj.path
+                else:
+                    path = obj.path[len(obj.path) - max_track_pts :]
+
+                prev_point = None
+                for pt in path:
+                    if not prev_point is None:
+                        cv2.line(frame2, (prev_point[0], prev_point[1]), (pt[0], pt[1]),
+                            (0,255,0), thickness=2, lineType=8,
+                        )
+                    prev_point = pt
 
                 try:
                     for ax in obj.axle_track[-1]:

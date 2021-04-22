@@ -252,11 +252,11 @@ while vidcap2.isOpened():
 
         cv2.circle(frame2, btm, 3, (0,0,255), -1)
 
-        # try:
-        #     for ax in obj.axle_track[-1]:
-        #         cv2.rectangle(frame2, ax[:2], ax[2:], (255,0,255), 3)
-        # except IndexError:
-        #     pass
+        try:
+            for ax in obj.axle_track[-1]:
+                cv2.rectangle(frame2, ax[:2], ax[2:], (255,0,255), 3)
+        except IndexError:
+            pass
 
     if WRITE_VIDEO:
         videowriter.write(frame2)

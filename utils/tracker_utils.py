@@ -99,8 +99,11 @@ def axle_assignments(tracked_objs, axles, sort_order):
             if len(obj_ax) > len(obj.max_axles_detected):
                 obj.max_axles_detected = obj_ax
 
-                if (obj.obj_class[0] in ["3t", "4t", "5t", "6t"]):
-                    obj.obj_class[0][0] = str(len(obj.max_axles_detected))
+                if (
+                    obj.obj_class[0] in ["3t", "4t", "5t", "6t"]
+                    and len(obj.max_axles_detected) >= int(obj.obj_class[0][0])
+                ):
+                    obj.obj_class[0] = str(len(obj.max_axles_detected)) + "t"
                     obj.axle_config = _get_axleconfig(obj.max_axles_detected)
 
             _axles = temp
