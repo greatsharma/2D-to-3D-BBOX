@@ -10,7 +10,6 @@ from multiprocessing import Process, Queue, Value
 from utils import axle_assignments
 from trackers import KalmanTracker
 from camera_metadata import CAMERA_METADATA
-from detectors.trt_detector import TrtYoloDetector
 from utils import init_lane_detector, init_direction_detector, init_within_interval
 from utils import draw_text_with_backgroud, draw_tracked_objects, draw_3dbox
 
