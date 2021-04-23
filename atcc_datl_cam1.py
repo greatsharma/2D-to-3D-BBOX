@@ -125,6 +125,10 @@ def twoD_2_threeD_primarycam(obj):
     cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
 
     pt3 = line_intersect(pt2, (cx,cy), (rect[2], rect[1]), (rect[2], rect[3]))
+    if objcls not in ["tw", "car"]:
+        pt3 = list(pt3)
+        pt3[1] += int(0.02 * height)
+        pt3 = tuple(pt3) 
 
     c1, c2 = pt1, (-411, -54)
     cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
@@ -288,7 +292,7 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     elif key == ord('p'):
         cv2.waitKey(-1)
     
-    # print(f"frame_count: {frame_count}, fps: {1.0 / (time.time()-start_time)}")
+    print(f"frame_count: {frame_count}, fps: {1.0 / (time.time()-start_time)}")
 
 vidcap1.release()
 vidcap2.release()

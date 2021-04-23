@@ -128,6 +128,10 @@ def twoD_2_threeD_primarycam(obj):
     cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
 
     pt3 = line_intersect(pt2, (cx,cy), (rect[2], rect[1]), (rect[2], rect[3]))
+    if objcls not in ["tw", "car"]:
+        pt3 = list(pt3)
+        pt3[1] += int(0.02 * height)
+        pt3 = tuple(pt3) 
 
     c1, c2 = pt1, (-411, -54)
     cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
@@ -341,11 +345,11 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
 
                 cv2.circle(frame2, (int(btmx_tf), int(btmy_tf)), 3, (0,0,255), -1)
 
-                try:
-                    for ax in obj.axle_track[-1]:
-                        cv2.rectangle(frame1, ax[:2], ax[2:], (76, 0, 178), 2)
-                except IndexError:
-                    pass
+                # try:
+                #     for ax in obj.axle_track[-1]:
+                #         cv2.rectangle(frame1, ax[:2], ax[2:], (76, 0, 178), 2)
+                # except IndexError:
+                #     pass
 
             for obj in trackedobjs_list2.values():
                 rect = obj.rect
@@ -386,11 +390,11 @@ def postprocess_detections(preprocessedframe1_queue, preprocessedframe2_queue, t
 
                 cv2.circle(frame2, btm, 3, (0,255,255), -1)
 
-                try:
-                    for ax in obj.axle_track[-1]:
-                        cv2.rectangle(frame2, ax[:2], ax[2:], (76, 0, 178), 2)
-                except IndexError:
-                    pass
+                # try:
+                #     for ax in obj.axle_track[-1]:
+                #         cv2.rectangle(frame2, ax[:2], ax[2:], (76, 0, 178), 2)
+                # except IndexError:
+                #     pass
 
             final_frame = np.hstack((frame1, frame2))
             videowriter.write(final_frame)
@@ -583,7 +587,7 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     frame1 = cv2.resize(frame1, dsize=(width1//2, height1//2))
     frame2 = cv2.resize(frame2, dsize=(width2//2, height2//2))
 
-    key = cv2.waitKey(35)
+    key = cv2.waitKey(42)
 
     tok = time.time()
     avg_fps = round(frame_count1 / (tok - tik1), 2)
