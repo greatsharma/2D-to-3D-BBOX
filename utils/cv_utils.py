@@ -4,7 +4,7 @@ from math import atan2, degrees
 from scipy.spatial import distance
 
 
-class_colors = {
+CLASS_COLOR = {
     "tw": (255, 0, 0),
     "car": (0, 255, 0),
     "lgv": (100, 0, 100),
@@ -13,13 +13,29 @@ class_colors = {
     "4t": (255, 255, 0),
     "5t": (138, 43, 226),
     "6t": (0, 0, 0),
-    "bus": (255, 255, 255),
+    "bus": (101, 178, 0),
     "ml": (255, 215, 0),
     "auto": (128, 0, 128),
     "mb": (139, 69, 19),
     "tractr": (255, 153, 153),
-    "axle": (100, 200, 100),
+    "axle": (76, 0, 178)
 }
+
+
+def gen_random_colors(classes: list, num_colors: int, random_seed=42) -> dict:
+    import random
+    import colorsys
+
+    random.seed(random_seed)
+
+    hsvs = [[float(x) / num_colors, 1., 0.7] for x in range(num_colors)]
+    random.shuffle(hsvs)
+    
+    rgbs = list(map(lambda x: list(colorsys.hsv_to_rgb(*x)), hsvs))
+    bgrs = {cls : (int(rgb[2] * 255), int(rgb[1] * 255),  int(rgb[0] * 255))
+            for cls,rgb in zip(classes, rgbs)}
+    
+    return bgrs
 
 
 def draw_text_with_backgroud(
@@ -74,7 +90,7 @@ def _checkpoint(h, k, x, y, a, b, angle):
 
 
 def draw_tracked_objects(self, frame, tracked_objs):
-    global class_colors
+    global CLASS_COLOR
 
     to_deregister = []
 
@@ -101,7 +117,7 @@ def draw_tracked_objects(self, frame, tracked_objs):
         if self.mode == "debug":
             cv2.circle(frame, obj_bottom, radius=3, color=(0, 0, 0), thickness=-1)
 
-        base_color = class_colors[obj.obj_class[0]]
+        base_color = CLASS_COLOR[obj.obj_class[0]]
 
         if obj.absent_count == 0:
             x, y = obj_centroid[0] - 10, obj_centroid[1]

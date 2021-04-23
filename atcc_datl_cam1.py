@@ -9,8 +9,8 @@ from utils import axle_assignments
 from trackers import KalmanTracker
 from camera_metadata import CAMERA_METADATA
 from detectors.trt_detector import TrtYoloDetector
+from utils import CLASS_COLOR, draw_text_with_backgroud, draw_3dbox
 from utils import init_lane_detector, init_direction_detector, init_within_interval
-from utils import draw_text_with_backgroud, draw_tracked_objects, draw_3dbox
 
 
 WRITE_FRAME = False
@@ -225,23 +225,24 @@ while vidcap1.isOpened() and vidcap2.isOpened():
         btm = obj.obj_bottom
         lane = obj.lane
 
+        obj_color = CLASS_COLOR[obj.obj_class[0]]
+
         # if obj.obj_class[0] not in ["car", "ml", "auto", "tw"]:
-        #     rect = obj.rect
-        #     cv2.rectangle(frame1, rect[:2], rect[2:], (255,0,0), 1)
+        #     cv2.rectangle(frame1, rect[:2], rect[2:], obj_color, 1)
 
         if obj.absent_count == 0:
-            x, y = obj_centroid[0] - 10, obj_centroid[1]
-            draw_3dbox(frame1, obj.threed_box, linewidth=2)
+            x, y = obj_centroid[0], obj_centroid[1]
+            draw_3dbox(frame1, obj.threed_box, boxcolor=obj_color)
         else:
             x, y = btm[0] - 10, btm[1]
 
         if obj.direction:
             txt = str(obj.objid) + ": " + obj.obj_class[0]
-            draw_text_with_backgroud(frame1, txt, x, y, font_scale=0.6, thickness=2,
-                background=(243, 227, 218), foreground=(0, 0, 0), box_coords_1=(-7, 7), box_coords_2=(10, -10),
+            draw_text_with_backgroud(frame1, txt, x, y, font_scale=0.4, thickness=1,
+                background=(0, 0, 0), foreground=(255,255,255), box_coords_1=(-3, 5), box_coords_2=(5, -5),
             )
 
-        max_track_pts = 25
+        max_track_pts = 30
         if len(obj.path) <= max_track_pts:
             path = obj.path
         else:
@@ -251,11 +252,11 @@ while vidcap1.isOpened() and vidcap2.isOpened():
         for pt in path:
             if not prev_point is None:
                 cv2.line(frame1, (prev_point[0], prev_point[1]), (pt[0], pt[1]),
-                    (0,255,0), thickness=2, lineType=8,
+                    obj_color, thickness=2, lineType=8,
                 )
             prev_point = pt
 
-        cv2.circle(frame1, btm, 3, (0,0,255), -1)
+        cv2.circle(frame1, btm, 2, (0,0,255), -1)
 
         if lane == "1":
             btmx_tf = int((0.65523379 * btm[0]) + (-3.67679969 * btm[1]) + 1349.9740589597031)
@@ -271,7 +272,7 @@ while vidcap1.isOpened() and vidcap2.isOpened():
 
         try:
             for ax in obj.axle_track[-1]:
-                cv2.rectangle(frame1, ax[:2], ax[2:], (255,0,255), 3)
+                cv2.rectangle(frame1, ax[:2], ax[2:], (76, 0, 178), 2)
         except IndexError:
             pass
 
@@ -287,7 +288,7 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     elif key == ord('p'):
         cv2.waitKey(-1)
     
-    print(f"frame_count: {frame_count}, fps: {1.0 / (time.time()-start_time)}")
+    # print(f"frame_count: {frame_count}, fps: {1.0 / (time.time()-start_time)}")
 
 vidcap1.release()
 vidcap2.release()
