@@ -237,7 +237,6 @@ while vidcap2.isOpened():
             )
 
         max_track_pts = 30
-
         if len(obj.path) <= max_track_pts:
             path = obj.path
         else:
