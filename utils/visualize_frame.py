@@ -33,13 +33,13 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     frame2 = cv2.resize(frame2, dsize=(width2//2, height2//2))
 
     llcoords = np.array(
-                [(200, 520), (652, 495), (72, 197), (10, 228), (10, 330)], dtype=np.int32
+                [(318, 513), (628, 482), (72, 197), (10, 228), (11, 270)], dtype=np.int32
             ).reshape((-1, 1, 2))
     mlcoords = np.array(
-                [(652, 495), (803, 444), (129, 165), (72, 197)], dtype=np.int32
+                [(628, 482), (783, 434), (143, 170), (72, 197)], dtype=np.int32
             ).reshape((-1, 1, 2))
     rlcoords = np.array(
-                [(803, 444), (916, 309), (223, 110), (129, 165)], dtype=np.int32
+                [(783, 434), (885, 300), (245, 116), (143, 170)], dtype=np.int32
             ).reshape((-1, 1, 2))
 
     cv2.polylines(frame1, [llcoords], isClosed=True, color=(0, 0, 0), thickness=2)
@@ -60,7 +60,7 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     cv2.polylines(frame2, [mlcoords], isClosed=True, color=(0, 0, 0), thickness=2)
     cv2.polylines(frame2, [rlcoords], isClosed=True, color=(0, 0, 0), thickness=2)
 
-    plt.imshow(cv2.cvtColor(np.vstack((frame1, frame2)), code=cv2.COLOR_BGR2RGB))
+    plt.imshow(cv2.cvtColor(frame1, code=cv2.COLOR_BGR2RGB))
     plt.show()
     break
 

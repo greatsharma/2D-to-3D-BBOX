@@ -4,13 +4,13 @@ import numpy as np
 CAMERA_METADATA = {
     "datlcam1": {
         "leftlane_coords": np.array(
-            [(200, 520), (703, 521), (72, 197), (10, 228), (10, 330)], dtype=np.int32
+            [(318, 513), (628, 482), (72, 197), (10, 228), (11, 270)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "middlelane_coords": np.array(
-            [(703, 521), (872, 472), (129, 165), (72, 197)], dtype=np.int32
+            [(628, 482), (783, 434), (143, 170), (72, 197)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "rightlane_coords": np.array(
-            [(872, 472), (950, 316), (223, 110), (129, 165)], dtype=np.int32
+            [(783, 434), (885, 300), (245, 116), (143, 170)], dtype=np.int32
         ).reshape((-1, 1, 2)),
         "leftlane_ref": (731, 535),
         "middlelane_ref": (878, 533),
@@ -22,13 +22,14 @@ CAMERA_METADATA = {
             "tw": [275, 550],
         },
         "initial_maxdistances": {
-            "4t,5t,6t,tractr,bus,mb": 120,
-            "ml,auto,2t,3t,lgv": 140,
-            "tw,car": 150,
+            "4t,5t,6t,tractr,bus,mb": 80,
+            "ml,auto,2t,3t,lgv": 100,
+            "tw,car": 110,
         },
         "lane_angles": {
-            "1": 2.772,
-            "2": 2.624,
+            "1": 2.789,
+            "2": 2.722,
+            "3": 2.616
         },
     },
     "datlcam2": {
@@ -51,13 +52,14 @@ CAMERA_METADATA = {
             "tw": [275, 550],
         },
         "initial_maxdistances": {
-            "4t,5t,6t,tractr,bus,mb": 120,
-            "ml,auto,2t,3t,lgv": 140,
-            "tw,car": 150,
+            "4t,5t,6t,tractr,bus,mb": 110,
+            "ml,auto,2t,3t,lgv": 130,
+            "tw,car": 140,
         },
         "lane_angles": {
-            "1": 2.772,
-            "2": 2.624,
+            "1": 0.482,
+            "2": 0.331,
+            "3": 0.235
         },
     },
 }

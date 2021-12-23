@@ -84,19 +84,26 @@ def axle_assignments(tracked_objs, axles, sort_order):
                 else:
                     temp.append(ax)
 
-            if sort_order == "asce":
-                obj_ax = sorted(obj_ax, key=lambda x: x[0])
-            else:
-                obj_ax = sorted(obj_ax, key=lambda x: x[0], reverse=True)
+            objax_length = len(obj_ax)
+
+            if objax_length > 1:
+                if sort_order == "asce":
+                    obj_ax = sorted(obj_ax, key=lambda x: x[0])
+                else:
+                    obj_ax = sorted(obj_ax, key=lambda x: x[0], reverse=True)
 
             obj.axle_track.append(obj_ax)
 
-            if len(obj_ax) >= 1:
-                largest_axle = sorted(obj_ax, key=lambda x: x[3]-x[1])[0]
-                if not obj.lastdetected_axle or (largest_axle[3] - largest_axle[1]) >= (obj.lastdetected_axle[3] - obj.lastdetected_axle[1]):
-                    obj.lastdetected_axle = largest_axle
+            if objax_length >= 1:
+                if objax_length == 1:
+                    largest_axle = obj_ax[0]
+                else:
+                    largest_axle = sorted(obj_ax, key=lambda x: x[3]-x[1])[0]
     
-            if len(obj_ax) > len(obj.max_axles_detected):
+                if not obj.lastdetected_axle or (largest_axle[3] - largest_axle[1]) > (obj.lastdetected_axle[3] - obj.lastdetected_axle[1]):
+                    obj.lastdetected_axle = largest_axle
+
+            if objax_length > len(obj.max_axles_detected):
                 obj.max_axles_detected = obj_ax
 
                 if (

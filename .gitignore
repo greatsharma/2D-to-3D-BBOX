@@ -145,6 +145,7 @@ cython_debug/
 
 # my files and folders
 notebooks/
+extracted_images/
 *.avi
 *.mp4
 *.weights

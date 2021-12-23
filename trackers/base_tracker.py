@@ -32,9 +32,12 @@ class VehicleObject(object):
         self.endtime = None
 
         self.max_axles_detected = []
-        self.lastdetected_axle = None # for 3d box
         self.axle_config = None
         self.axle_track = []
+
+        # for 3d box
+        self.lastdetected_axle = None 
+        self.perincrease_in_3dboxheight_dueto_axle = None
 
         # self.state_list = []
         self.state = [0] * 4  # this attribute is for kalman tracker only
@@ -92,10 +95,14 @@ class BaseTracker(object):
             if detection["obj_class"][0] in k:
                 semi_majoraxis = v
 
-        if detection["lane"] == "2":
-            angle = 18
+        if detection["lane"] == "1":
+            angle =  180 - math.degrees(self.lane_angles["1"])
+        elif detection["lane"] == "2":
+            angle = 180 - math.degrees(self.lane_angles["2"])
         else:
-            angle = 10
+            angle = 180 - math.degrees(self.lane_angles["3"])
+
+        self.objects[self.next_objid].angle_range = [angle - angle * 0.5, angle, angle + angle * 0.5]
 
         if detection["obj_class"][0] in "2t,3t,4t,5t,6t,lgv,tractr,bus,mb":
             semi_minoraxis = semi_majoraxis // 2
@@ -109,46 +116,57 @@ class BaseTracker(object):
     def _update_eos(self, obj_id, lost=False) -> None:
         self.objects[obj_id].eos.centre = self.objects[obj_id].path[-1]
 
-        if len(self.objects[obj_id].path) <= 2:
+        if self.objects[obj_id].obj_class[0] in "2t,3t,4t,5t,6t,lgv,tractr,bus,mb":
+            if self.objects[obj_id].lane == "1":
+                if len(self.objects[obj_id].path) <= 20:
+                    return
+            else:
+                if len(self.objects[obj_id].path) <= 10:
+                    return
+        elif len(self.objects[obj_id].path) <= 4:
             return
 
         pt1, pt2 = self.objects[obj_id].path[-2], self.objects[obj_id].path[-1]
         dy, dx = (pt2[1] - pt1[1]), (pt2[0] - pt1[0])
-        angle1 = math.degrees(math.atan2(dy, dx))
 
-        pt3, pt4 = self.objects[obj_id].path[-3], self.objects[obj_id].path[-2]
-        dy, dx = (pt4[1] - pt3[1]), (pt4[0] - pt3[0])
-        angle2 = math.degrees(math.atan2(dy, dx))
+        angle = 180 + math.degrees(math.atan2(dy, dx)) # angle is -ve that's why adding to 180
 
-        self.objects[obj_id].eos.angle = (angle1 + angle2) / 2
+        if not lost and angle >= self.objects[obj_id].angle_range[0] and angle <= self.objects[obj_id].angle_range[2]:
+            self.objects[obj_id].eos.angle = angle
+        else:
+            self.objects[obj_id].eos.angle = self.objects[obj_id].angle_range[1]
 
         self.objects[obj_id].eos.last_d = distance.euclidean(pt1, pt2)
 
         if not lost:
-            self.objects[obj_id].eos.semi_majoraxis = max(
-                int(2.25 * self.objects[obj_id].eos.last_d), 30
-            )
-
             if self.objects[obj_id].obj_class[0] in "2t,3t,4t,5t,6t,lgv,tractr,bus,mb":
+                self.objects[obj_id].eos.semi_majoraxis = max(
+                    int(3 * self.objects[obj_id].eos.last_d), 50
+                )
                 self.objects[obj_id].eos.semi_minoraxis = max(
-                    int(self.objects[obj_id].eos.semi_majoraxis / 2.5), 20
+                    int(self.objects[obj_id].eos.semi_majoraxis / 1.5), 30
                 )
             else:
+                self.objects[obj_id].eos.semi_majoraxis = max(
+                    int(2.4 * self.objects[obj_id].eos.last_d), 35
+                )
                 self.objects[obj_id].eos.semi_minoraxis = max(
-                    int(self.objects[obj_id].eos.semi_majoraxis / 4), 15
+                    int(self.objects[obj_id].eos.semi_majoraxis / 3), 20
                 )
         else:
-            self.objects[obj_id].eos.semi_majoraxis = max(
-                int(2.2 * self.objects[obj_id].eos.last_d), 30
-            )
-
             if self.objects[obj_id].obj_class[0] in "2t,3t,4t,5t,6t,lgv,tractr,bus,mb":
+                self.objects[obj_id].eos.semi_majoraxis = max(
+                    int(3 * self.objects[obj_id].eos.last_d), 80
+                )
                 self.objects[obj_id].eos.semi_minoraxis = max(
-                    int(self.objects[obj_id].eos.semi_majoraxis / 2), 25
+                    int(self.objects[obj_id].eos.semi_majoraxis / 1.75), 40
                 )
             else:
+                self.objects[obj_id].eos.semi_majoraxis = max(
+                    int(3 * self.objects[obj_id].eos.last_d), 60
+                )
                 self.objects[obj_id].eos.semi_minoraxis = max(
-                    int(self.objects[obj_id].eos.semi_majoraxis / 3), 22
+                    int(self.objects[obj_id].eos.semi_majoraxis / 2), 30
                 )
 
         n = self.objects[obj_id].eos.last_d * 2

@@ -148,13 +148,26 @@ def twoD_2_threeD_secondarycam(obj):
 
     pt_temp2 = pt4[0], pt4[1] + 2*height
 
+    pt5_ = line_intersect(pt4, pt_temp2, (rect[0], rect[3]), (rect[2], rect[3]))
+
     try:
         c1, c2 = lastaxle_btm_midpt, (1227, -35)
         cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
         cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
+
         pt5 = line_intersect(pt4, pt_temp2, (1227, -35), (cx,cy))
         if pt5 is None:
             raise UnboundLocalError
+
+        perincrease_in_height = (pt5[1] - pt5_[1]) / height
+
+        if obj.perincrease_in_3dboxheight_dueto_axle and perincrease_in_height > obj.perincrease_in_3dboxheight_dueto_axle * 1.75:
+            obj.lastdetected_axle = None
+            obj.perincrease_in_3dboxheight_dueto_axle = None
+            raise UnboundLocalError
+        else:
+            obj.perincrease_in_3dboxheight_dueto_axle = perincrease_in_height
+
     except UnboundLocalError:
         if objcls in ["tw", "auto", "car", "ml"]:
             c1, c2 = pt2, (1227, -35)
@@ -166,7 +179,7 @@ def twoD_2_threeD_secondarycam(obj):
             
             pt2 = line_intersect(pt2, (cx,cy), pt1, pt_temp)
         
-        pt5 = line_intersect(pt4, pt_temp2, (rect[0], rect[3]), (rect[2], rect[3]))
+        pt5 = pt5_
 
     m = -(pt3[1] - pt4[1]) / (pt3[0] - pt4[0])
     if objcls in ["tw", "auto", "car", "ml"]:

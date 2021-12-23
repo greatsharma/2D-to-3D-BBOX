@@ -13,7 +13,7 @@ from utils import CLASS_COLOR, draw_text_with_backgroud, draw_3dbox
 from utils import init_lane_detector, init_direction_detector, init_within_interval
 
 
-WRITE_FRAME = False
+WRITE_FRAME = True
 
 vidcap1 = cv2.VideoCapture("inputs/datlcam1_clip1.mp4")
 width1 = int(vidcap1.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -32,9 +32,10 @@ initial_frame1 = cv2.resize(initial_frame1, dsize=(width1//2, height1//2))
 
 camera_meta = CAMERA_METADATA["datlcam1"]
 
+lane_detector = init_lane_detector(camera_meta)
 detector = TrtYoloDetector(
     initial_frame1,
-    init_lane_detector(camera_meta),
+    lane_detector,
     detection_thresh=0.5,
 )
 
@@ -43,6 +44,7 @@ within_interval = init_within_interval(camera_meta)
 initial_maxdistances = camera_meta["initial_maxdistances"]
 lane_angles = camera_meta["lane_angles"]
 velocity_regression = None
+MAX_ABSENT = 40
 
 tracker = KalmanTracker(
     direction_detector,
@@ -50,7 +52,7 @@ tracker = KalmanTracker(
     within_interval,
     lane_angles,
     velocity_regression,
-    max_absent=1
+    max_absent=MAX_ABSENT
 )
 
 date = datetime.datetime.now()
@@ -69,7 +71,7 @@ if WRITE_FRAME:
         outvideo_path,
         cv2.VideoWriter_fourcc("M", "J", "P", "G"),
         50.0,
-        (1920, 540),
+        (960, 540),
     )
 
 
@@ -147,21 +149,34 @@ def twoD_2_threeD_primarycam(obj):
 
     pt_temp = pt4[0], pt4[1] + 2*height
 
+    pt5_ = line_intersect(pt4, pt_temp, (rect[0], rect[3]), (rect[2], rect[3]))
+
     try:
         c1, c2 = lastaxle_btm_midpt, (-411, -54)
         cx = int(c2[0] + (c1[0]-c2[0]) * 3.8)
         cy = int(c2[1] + (c1[1]-c2[1]) * 3.8)
+
         pt5 = line_intersect(pt4, pt_temp, (-411, -54), (cx,cy))
         if pt5 is None:
             raise UnboundLocalError
+
+        perincrease_in_height = (pt5[1] - pt5_[1]) / height
+
+        if obj.perincrease_in_3dboxheight_dueto_axle and perincrease_in_height > obj.perincrease_in_3dboxheight_dueto_axle * 1.75:
+            obj.lastdetected_axle = None
+            obj.perincrease_in_3dboxheight_dueto_axle = None
+            raise UnboundLocalError
+        else:
+            obj.perincrease_in_3dboxheight_dueto_axle = perincrease_in_height
+
     except UnboundLocalError:
-        pt5 = line_intersect(pt4, pt_temp, (rect[0], rect[3]), (rect[2], rect[3]))
+        pt5 = pt5_
 
     m = -(pt3[1] - pt4[1]) / (pt3[0] - pt4[0])
     c = -pt5[1] - m * pt5[0]
     pt_temp = int((0-c)/m), 0
     
-    pt6 = line_intersect(pt5, pt_temp, (rect[2], rect[1]), (rect[2], rect[3]+height))
+    pt6 = line_intersect(pt5, pt_temp, (rect[2], rect[1]), (rect[2], rect[3]+ 2*height))
     pt7 = line_intersect(pt5, (-411, -54), (rect[0], rect[1]), (rect[0], rect[3]))
 
     btm_pt = (pt5[0] + pt6[0]) // 2, (pt5[1] + pt6[1]) // 2
@@ -176,25 +191,109 @@ def twoD_2_threeD_primarycam(obj):
 
 frame_count = 0
 
-while vidcap1.isOpened() and vidcap2.isOpened():
+while vidcap1.isOpened(): #and vidcap2.isOpened():
     start_time = time.time()
 
     status1, frame1 = vidcap1.read()
-    status2, frame2 = vidcap2.read()
+    # status2, frame2 = vidcap2.read()
 
     if not status1:
         print("status1 false")
         break
 
-    if not status2:
-        print("status2 false")
-        break
+    # if not status2:
+    #     print("status2 false")
+    #     break
 
     frame1 = cv2.resize(frame1, dsize=(width1//2, height1//2))
-    frame2 = cv2.resize(frame2, dsize=(width2//2, height2//2))
+    # frame2 = cv2.resize(frame2, dsize=(width2//2, height2//2))
 
-    # for l in ["leftlane", "middlelane", "rightlane"]:
-    #     cv2.polylines(frame1, [camera_meta[f"{l}_coords"]], isClosed=True, color=(0, 0, 0), thickness=2)
+    frame_count += 1
+
+    detection_list, axles = detector.detect(frame1)
+
+    tracked_objects = tracker.update(detection_list)
+
+    axle_assignments(tracked_objects, axles, sort_order="asce")
+
+    to_deregister = []
+
+    for obj in tracked_objects.values():
+        btm3d, obj.threed_box = twoD_2_threeD_primarycam(obj)
+        btm2d = (obj.state[0], obj.state[2])
+        rect = obj.rect
+        obj_centroid = (rect[0]+rect[2])//2, (rect[1]+rect[3])//2
+        lane = obj.lane
+
+        if (obj.absent_count > MAX_ABSENT//2 and  (obj.state[1], obj.state[3]) == (0,0)) \
+            or (lane_detector(btm2d) is None and btm2d[0] < camera_meta["adaptive_countintervals"]["tw"][0]):
+            to_deregister.append(obj.objid)
+            continue
+        
+        obj_color = CLASS_COLOR[obj.obj_class[0]]
+
+        # if obj.obj_class[0] not in ["car", "ml", "auto", "tw"]:
+            # cv2.rectangle(frame1, rect[:2], rect[2:], obj_color, 1)
+
+        if obj.absent_count == 0:
+            btm2map = btm3d
+            x, y = obj_centroid[0], obj_centroid[1]
+            draw_3dbox(frame1, obj.threed_box, boxcolor=obj_color)
+        else:
+            btm2map = btm2d
+            x, y = btm2d[0] - 10, btm2d[1]
+
+        if obj.direction:
+            txt = str(obj.objid) + ": " + obj.obj_class[0]
+            draw_text_with_backgroud(frame1, txt, x, y, font_scale=0.4, thickness=1,
+                background=(0, 0, 0), foreground=(255,255,255), box_coords_1=(-3, 5), box_coords_2=(5, -5),
+            )
+
+        max_track_pts = 35
+        if len(obj.path) <= max_track_pts:
+            path = obj.path
+        else:
+            path = obj.path[len(obj.path) - max_track_pts :]
+
+        prev_point = None
+        for pt in path:
+            if not prev_point is None:
+                cv2.line(frame1, (prev_point[0], prev_point[1]), (pt[0], pt[1]),
+                    obj_color, thickness=2, lineType=8,
+                )
+            prev_point = pt
+
+        # centre = obj.eos.centre
+        # semi_majoraxis = obj.eos.semi_majoraxis
+        # semi_minoraxis = obj.eos.semi_minoraxis
+        # angle = obj.eos.angle
+        # cv2.ellipse(frame1, centre, (semi_majoraxis, semi_minoraxis), angle,
+        #     startAngle=0, endAngle=360, color=(0,0,0), thickness=2,
+        # )
+
+        cv2.circle(frame1, btm2map, 3, (0,0,255), -1)
+
+        # if lane == "1":
+        #     btmx_tf = int((0.65523379 * btm2map[0]) + (-3.67679969 * btm2map[1]) + 1349.9740589597031)
+        #     btmy_tf = int((0.41925539 * btm2map[0]) + (-0.04235352 * btm2map[1]) + 99.19415894167156)
+        # elif lane == "2":
+        #     btmx_tf = int((0.55305366 * btm2map[0]) + (-3.3535726 * btm2map[1]) + 1301.5774568947409)
+        #     btmy_tf = int((0.37036275  * btm2map[0]) + (-0.02834603 * btm2map[1]) + 113.54696288217643)
+        # else:
+        #     btmx_tf = int((0.39657267 * btm2map[0]) + (-2.85288489 * btm2map[1]) + 1195.282143258536)
+        #     btmy_tf = int((0.30479565 * btm2map[0]) + (0.04620164 * btm2map[1]) + 108.36117943778677)
+
+        # cv2.circle(frame2, (int(btmx_tf), int(btmy_tf)), 3, (0,0,255), -1)
+
+        if len(obj.axle_track) > 0 and obj.absent_count == 0:
+            for ax in obj.axle_track[-1]:
+                cv2.rectangle(frame1, ax[:2], ax[2:], (76, 0, 178), 2)
+
+    for obj_id in to_deregister:
+        tracker._deregister_object(obj_id)
+
+    for l in ["leftlane", "middlelane", "rightlane"]:
+        cv2.polylines(frame1, [camera_meta[f"{l}_coords"]], isClosed=True, color=(0, 0, 0), thickness=1)
 
     # pt = camera_meta["mid_ref"]
     # cv2.line(frame1, (pt, frame1.shape[0]), (pt, 0), (0, 0, 255), 2)
@@ -213,78 +312,11 @@ while vidcap1.isOpened() and vidcap2.isOpened():
     # cv2.line(frame1, (pt[0], frame1.shape[0]), (pt[0], 0), (255, 0, 0), 2)
     # cv2.line(frame1, (pt[1], frame1.shape[0]), (pt[1], 0), (255, 0, 0), 2)
 
-    frame_count += 1
-
-    detection_list, axles = detector.detect(frame1)
-
-    tracked_objects = tracker.update(detection_list)
-
-    axle_assignments(tracked_objects, axles, sort_order="asce")
-
-    for obj in tracked_objects.values():
-        obj.obj_bottom, obj.threed_box = twoD_2_threeD_primarycam(obj)
-        
-        rect = obj.rect
-        obj_centroid = (rect[0]+rect[2])//2, (rect[1]+rect[3])//2
-        btm = obj.obj_bottom
-        lane = obj.lane
-
-        obj_color = CLASS_COLOR[obj.obj_class[0]]
-
-        # if obj.obj_class[0] not in ["car", "ml", "auto", "tw"]:
-        #     cv2.rectangle(frame1, rect[:2], rect[2:], obj_color, 1)
-
-        if obj.absent_count == 0:
-            x, y = obj_centroid[0], obj_centroid[1]
-            draw_3dbox(frame1, obj.threed_box, boxcolor=obj_color)
-        else:
-            x, y = btm[0] - 10, btm[1]
-
-        if obj.direction:
-            txt = str(obj.objid) + ": " + obj.obj_class[0]
-            draw_text_with_backgroud(frame1, txt, x, y, font_scale=0.4, thickness=1,
-                background=(0, 0, 0), foreground=(255,255,255), box_coords_1=(-3, 5), box_coords_2=(5, -5),
-            )
-
-        max_track_pts = 30
-        if len(obj.path) <= max_track_pts:
-            path = obj.path
-        else:
-            path = obj.path[len(obj.path) - max_track_pts :]
-
-        prev_point = None
-        for pt in path:
-            if not prev_point is None:
-                cv2.line(frame1, (prev_point[0], prev_point[1]), (pt[0], pt[1]),
-                    obj_color, thickness=2, lineType=8,
-                )
-            prev_point = pt
-
-        cv2.circle(frame1, btm, 2, (0,0,255), -1)
-
-        if lane == "1":
-            btmx_tf = int((0.65523379 * btm[0]) + (-3.67679969 * btm[1]) + 1349.9740589597031)
-            btmy_tf = int((0.41925539 * btm[0]) + (-0.04235352 * btm[1]) + 99.19415894167156)
-        elif lane == "2":
-            btmx_tf = int((0.55305366 * btm[0]) + (-3.3535726 * btm[1]) + 1301.5774568947409)
-            btmy_tf = int((0.37036275  * btm[0]) + (-0.02834603 * btm[1]) + 113.54696288217643)
-        else:
-            btmx_tf = int((0.39657267 * btm[0]) + (-2.85288489 * btm[1]) + 1195.282143258536)
-            btmy_tf = int((0.30479565 * btm[0]) + (0.04620164 * btm[1]) + 108.36117943778677)
-
-        cv2.circle(frame2, (int(btmx_tf), int(btmy_tf)), 3, (0,0,255), -1)
-
-        try:
-            for ax in obj.axle_track[-1]:
-                cv2.rectangle(frame1, ax[:2], ax[2:], (76, 0, 178), 2)
-        except IndexError:
-            pass
-
-    final_frame = np.hstack((frame1, frame2))
+    final_frame = frame1 #np.hstack((frame1, frame2))
     if WRITE_FRAME:
         videowriter.write(final_frame)
 
-    cv2.imshow("video", final_frame)
+    cv2.imshow("video2", final_frame)
 
     key = cv2.waitKey(1)
     if key == ord('q'):
