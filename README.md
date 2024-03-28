@@ -14,4 +14,11 @@ https://github.com/greatsharma/2D-to-3D-BBOX/assets/32649388/30fa2ad1-4e90-4e3d-
 
 https://github.com/greatsharma/2D-to-3D-BBOX/assets/32649388/aab9ec23-ed5f-4f45-a3eb-3de70ddaac0c
 
+<br>
+
 ### 2D to 3D BBOX conversion
+
+In the below video the blue 2d bbox is the actual one inferenced from yolo detector whereas the green 3d bbox is the one constructing from the 2d bbox using simple geometry. Also the RED point here is NOT the bottom-right corner of 2d bbox but is the midpoint of bottom edge of 3d bbox.
+
+https://github.com/greatsharma/2D-to-3D-BBOX/assets/32649388/111722fe-8543-42c0-8dd5-97692f7304ef
+
