@@ -22,3 +22,6 @@ In the below video the blue 2d bbox is the actual one inferenced from yolo detec
 
 https://github.com/greatsharma/2D-to-3D-BBOX/assets/32649388/111722fe-8543-42c0-8dd5-97692f7304ef
 
+
+https://github.com/greatsharma/2D-to-3D-BBOX/assets/32649388/d8b9f10d-34ac-4f3d-8960-6134fb49ec9d
+
